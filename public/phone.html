@@ -2,9 +2,35 @@
 <html>
 <head>
   <title>Phone Controller</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 24px;
+      text-align: center;
+      margin: 20px;
+    }
+    #data-display {
+      margin-top: 20px;
+    }
+    .data-item {
+      margin: 10px 0;
+      font-size: 32px;
+      font-weight: bold;
+    }
+  </style>
 </head>
 <body>
   <button id="start">Enable Motion</button>
+
+  <div id="data-display">
+    <p class="data-item">X: <span id="x">--</span></p>
+    <p class="data-item">Y: <span id="y">--</span></p>
+    <p class="data-item">Z: <span id="z">--</span></p>
+    <p class="data-item">Pitch: <span id="pitch">--</span></p>
+    <p class="data-item">Roll: <span id="roll">--</span></p>
+    <p class="data-item">Yaw: <span id="yaw">--</span></p>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -19,8 +45,19 @@
         const data = {
           x: event.acceleration.x || 0,
           y: event.acceleration.y || 0,
-          z: event.acceleration.z || 0
+          z: event.acceleration.z || 0,
+          pitch: event.rotationRate.alpha || 0,
+          roll: event.rotationRate.beta || 0,
+          yaw: event.rotationRate.gamma || 0,
         };
+
+        // Update the display
+        document.getElementById('x').textContent = data.x.toFixed(2);
+        document.getElementById('y').textContent = data.y.toFixed(2);
+        document.getElementById('z').textContent = data.z.toFixed(2);
+        document.getElementById('pitch').textContent = data.pitch.toFixed(2);
+        document.getElementById('roll').textContent = data.roll.toFixed(2);
+        document.getElementById('yaw').textContent = data.yaw.toFixed(2);
 
         socket.emit("imu", data);
       });
