@@ -21,7 +21,8 @@
   </style>
 </head>
 <body>
-  <button id="start">Enable Motion</button>
+  <input type="text" id="name" placeholder="Enter your name" />
+  <button id="join">Join</button>
 
   <div id="data-display">
     <p class="data-item">X: <span id="x">--</span></p>
@@ -36,7 +37,15 @@
   <script>
     const socket = io();
 
-    document.getElementById("start").onclick = async () => {
+    document.getElementById("join").onclick = async () => {
+      const name = document.getElementById("name").value.trim();
+      if (!name) {
+        alert("Please enter your name");
+        return;
+      }
+
+      socket.emit("join", { name });
+
       if (typeof DeviceMotionEvent.requestPermission === "function") {
         await DeviceMotionEvent.requestPermission();
       }
