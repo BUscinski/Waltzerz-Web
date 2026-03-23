@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Game Host</title>
+</head>
+<body>
+  <h1>Scan to Join</h1>
+  <div id="qr"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script>
+    const url = window.location.origin + "/phone.html";
+
+    QRCode.toCanvas(url, function (err, canvas) {
+      document.getElementById("qr").appendChild(canvas);
+    });
+  </script>
+</body>
+</html>

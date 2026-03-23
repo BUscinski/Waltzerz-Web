@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Phone Controller</title>
+</head>
+<body>
+  <button id="start">Enable Motion</button>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    document.getElementById("start").onclick = async () => {
+      if (typeof DeviceMotionEvent.requestPermission === "function") {
+        await DeviceMotionEvent.requestPermission();
+      }
+
+      window.addEventListener("devicemotion", (event) => {
+        const data = {
+          x: event.acceleration.x || 0,
+          y: event.acceleration.y || 0,
+          z: event.acceleration.z || 0
+        };
+
+        socket.emit("imu", data);
+      });
+    };
+  </script>
+</body>
+</html>
