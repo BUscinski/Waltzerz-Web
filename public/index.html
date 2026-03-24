@@ -10,6 +10,13 @@
   <h2>Players:</h2>
   <div id="players"></div>
 
+  <h2>Game Controls</h2>
+  <input type="number" id="accelThresh" placeholder="Accel Threshold" value="50">
+  <input type="number" id="rotThresh" placeholder="Rot Threshold" value="100">
+  <button id="updateThresh">Update Thresholds for All Phones</button>
+  <br><br>
+  <button id="resetGame">Reset Game</button>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script>
@@ -19,7 +26,7 @@
 
     socket.on("player_joined", (data) => {
       const { id, name, color } = data;
-      players[id] = { name, color };
+      players[id] = { name, color, out: false };
       updatePlayersDisplay();
     });
 
@@ -29,12 +36,42 @@
       updatePlayersDisplay();
     });
 
+    socket.on("player_out", (data) => {
+      const { id } = data;
+      if (players[id]) {
+        players[id].out = true;
+        updatePlayersDisplay();
+      }
+    });
+
+    socket.on("jerk_broadcast", (data) => {
+      console.log("Jerk broadcast:", data);
+      // Could add visual feedback here if needed
+    });
+
+    socket.on("reset", () => {
+      for (const id in players) {
+        players[id].out = false;
+      }
+      updatePlayersDisplay();
+    });
+
+    document.getElementById("updateThresh").onclick = () => {
+      const accel = parseFloat(document.getElementById("accelThresh").value);
+      const rot = parseFloat(document.getElementById("rotThresh").value);
+      socket.emit("update_thresholds", { accel, rot });
+    };
+
+    document.getElementById("resetGame").onclick = () => {
+      socket.emit("reset");
+    };
+
     function updatePlayersDisplay() {
       playersDiv.innerHTML = "";
       for (const [id, player] of Object.entries(players)) {
         const p = document.createElement("p");
-        p.textContent = player.name;
-        p.style.color = player.color;
+        p.textContent = player.out ? `${player.name} (OUT)` : player.name;
+        p.style.color = player.out ? "gray" : player.color;
         p.style.fontSize = "24px";
         p.style.fontWeight = "bold";
         playersDiv.appendChild(p);

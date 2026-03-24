@@ -37,6 +37,31 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("jerk", (data) => {
+    console.log("Jerk detected:", data);
+    if (players[socket.id]) {
+      players[socket.id].out = true;
+      io.emit("player_out", { id: socket.id });
+    }
+    io.emit("jerk_broadcast", {
+      id: socket.id,
+      ...data
+    });
+  });
+
+  socket.on("update_thresholds", (data) => {
+    console.log("Updating thresholds:", data);
+    io.emit("update_thresholds", data);
+  });
+
+  socket.on("reset", () => {
+    console.log("Resetting game");
+    for (const id in players) {
+      players[id].out = false;
+    }
+    io.emit("reset");
+  });
+
   socket.on("disconnect", () => {
     if (players[socket.id]) {
       const { name, color } = players[socket.id];
