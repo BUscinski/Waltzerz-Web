@@ -75,19 +75,23 @@
     let ROT_JERK_THRESHOLD = 100; // degrees/s² per second
 
     document.getElementById("join").onclick = async () => {
+      console.log("Join button clicked");
       const name = document.getElementById("name").value.trim();
       if (!name) {
         alert("Please enter your name");
         return;
       }
-
+      console.log("Emitting join for", name);
       socket.emit("join", { name });
 
       if (typeof DeviceMotionEvent.requestPermission === "function") {
+        console.log("Requesting permission");
         await DeviceMotionEvent.requestPermission();
       }
 
+      console.log("Adding devicemotion listener");
       window.addEventListener("devicemotion", (event) => {
+        console.log("Device motion event:", event.acceleration);
         const rawData = {
           x: event.acceleration.x || 0,
           y: event.acceleration.y || 0,
