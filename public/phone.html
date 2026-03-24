@@ -38,6 +38,14 @@
   <script>
     const socket = io();
 
+    socket.on("connect", () => {
+      console.log("Connected to server");
+    });
+
+    socket.on("disconnect", () => {
+      console.log("Disconnected from server");
+    });
+
     socket.on("update_thresholds", (data) => {
       ACCEL_JERK_THRESHOLD = data.accel;
       ROT_JERK_THRESHOLD = data.rot;
@@ -63,6 +71,14 @@
     function average(arr) {
       if (arr.length === 0) return 0;
       return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    // Function to maintain array length
+    function maintainHistory(arr, value) {
+      arr.push(value);
+      if (arr.length > FRAME_HISTORY) {
+        arr.shift();
+      }
     }
 
     // Variables for jerk detection
