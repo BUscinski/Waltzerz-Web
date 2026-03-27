@@ -55,6 +55,31 @@
     socket.on("reset", () => {
       document.getElementById('jerk-status').textContent = '';
       clearTimeout(jerkTimeout);
+      loadCount = 0;
+      loadMagnitudes = [];
+      isGameActive = false;
+    });
+
+    socket.on("game_start", (data) => {
+      console.log("Game started!");
+      isGameActive = true;
+      loadCount = 0;
+      loadMagnitudes = [];
+      document.getElementById('jerk-status').textContent = 'GO!';
+      setTimeout(() => {
+        document.getElementById('jerk-status').textContent = '';
+      }, 2000);
+    });
+
+    socket.on("countdown", (data) => {
+      console.log("Countdown:", data.count);
+      document.getElementById('jerk-status').textContent = data.count.toString();
+    });
+
+    socket.on("game_ended", (data) => {
+      console.log("Game ended!", data);
+      isGameActive = false;
+      document.getElementById('jerk-status').textContent = `Final Loads: ${loadCount}`;
     });
 
     const FRAME_HISTORY = 10; // Number of past frames to keep for smoothing
@@ -81,12 +106,17 @@
       }
     }
 
-    // Variables for jerk detection
+    // Variables for load detection
     let prevTime = null;
     let prevSmoothed = null;
     let jerkTimeout;
+    let loadCount = 0;
+    let loadMagnitudes = [];
+    let isGameActive = false;
+    let lastLoadTime = 0; // Debounce loads to prevent doubles
+    const LOAD_DEBOUNCE = 300; // 300ms between loads
 
-    // Jerk detection thresholds (adjust based on phone calibration)
+    // Load detection thresholds (adjust based on phone calibration)
     let ACCEL_JERK_THRESHOLD = 50; // m/s³ per second
     let ROT_JERK_THRESHOLD = 100; // degrees/s² per second
 
@@ -152,22 +182,29 @@
             const jerkRotYaw = (smoothedData.yaw - prevSmoothed.yaw) / deltaTime;
             const jerkRotMagnitude = Math.sqrt(jerkRotPitch**2 + jerkRotRoll**2 + jerkRotYaw**2);
 
-            // Detect accelerometer jerk
-            if (jerkAccelMagnitude > ACCEL_JERK_THRESHOLD) {
-              console.log("Accelerometer jerk detected:", jerkAccelMagnitude.toFixed(2));
-              document.getElementById('jerk-status').textContent = `Accel Jerk: ${jerkAccelMagnitude.toFixed(2)}`;
+            // Detect accelerometer load
+            const now = Date.now();
+            if (jerkAccelMagnitude > ACCEL_JERK_THRESHOLD && isGameActive && (now - lastLoadTime) > LOAD_DEBOUNCE) {
+              console.log("Accelerometer load detected:", jerkAccelMagnitude.toFixed(2));
+              document.getElementById('jerk-status').textContent = `Load: ${loadCount + 1}`;
+              loadCount++;
+              loadMagnitudes.push(jerkAccelMagnitude);
+              lastLoadTime = now;
               clearTimeout(jerkTimeout);
-              jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 2000);
-              socket.emit("jerk", { type: "accel", value: jerkAccelMagnitude });
+              jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 1000);
+              socket.emit("load", { type: "accel", value: jerkAccelMagnitude });
             }
 
-            // Detect rotation jerk
-            if (jerkRotMagnitude > ROT_JERK_THRESHOLD) {
-              console.log("Rotation jerk detected:", jerkRotMagnitude.toFixed(2));
-              document.getElementById('jerk-status').textContent = `Rot Jerk: ${jerkRotMagnitude.toFixed(2)}`;
+            // Detect rotation load
+            if (jerkRotMagnitude > ROT_JERK_THRESHOLD && isGameActive && (now - lastLoadTime) > LOAD_DEBOUNCE) {
+              console.log("Rotation load detected:", jerkRotMagnitude.toFixed(2));
+              document.getElementById('jerk-status').textContent = `Load: ${loadCount + 1}`;
+              loadCount++;
+              loadMagnitudes.push(jerkRotMagnitude);
+              lastLoadTime = now;
               clearTimeout(jerkTimeout);
-              jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 2000);
-              socket.emit("jerk", { type: "rot", value: jerkRotMagnitude });
+              jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 1000);
+              socket.emit("load", { type: "rot", value: jerkRotMagnitude });
             }
           }
         }
