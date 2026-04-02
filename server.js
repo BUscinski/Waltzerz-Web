@@ -8,6 +8,10 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// OpenAI endpoint for ChatGPT prompt generation (option 2)
+const { OpenAI } = require('openai');
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
 // Use the new Hugging Face router endpoint (required by their updated API)
 // Ensure HF_API_KEY is set in environment variables on Render.
 const hf = new HfInference({
@@ -24,6 +28,32 @@ const hf = new HfInference({
 const MODEL_NAME = process.env.HF_MODEL || 'google/flan-t5-small';
 
 app.use(express.static("public"));
+app.use(express.json());
+
+app.post('/api/generate-prompt', async (req, res) => {
+  try {
+    const { seed } = req.body;
+    if (!seed || typeof seed !== 'string') {
+      return res.status(400).json({ error: 'seed is required' });
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: 'You are a creative game prompt generator.' },
+        { role: 'user', content: `Create a quiplash-like prompt from this keyword/phrase: ${seed}` }
+      ],
+      max_tokens: 80,
+      temperature: 0.9
+    });
+
+    const generated = completion.choices?.[0]?.message?.content || '';
+    return res.json({ prompt: generated.trim() });
+  } catch (error) {
+    console.error('OpenAI generation error:', error);
+    return res.status(500).json({ error: 'Failed to generate prompt' });
+  }
+});
 
 const players = {}; // socket.id -> {name, color}
 

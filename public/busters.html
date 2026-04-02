@@ -27,6 +27,11 @@
       <h3>Current Prompt:</h3>
       <p id="current-prompt" style="font-size: 18px; font-weight: bold;"></p>
     </div>
+    <div id="chatgpt-area" style="margin: 20px;">
+      <input type="text" id="chatgpt-seed" placeholder="Enter 1-2 words for Quiplash prompt" style="width: 60%; padding: 8px;" />
+      <button id="chatgpt-generate" style="padding: 8px 12px;">Generate from ChatGPT</button>
+      <p id="chatgpt-status" style="margin-top: 10px; color: #555;"></p>
+    </div>
   </div>
   
   <h2>Player Responses:</h2>
@@ -72,6 +77,30 @@
         messagesDiv.appendChild(msgDiv);
       }
     });
+
+    document.getElementById('chatgpt-generate').onclick = async () => {
+      const seedText = document.getElementById('chatgpt-seed').value.trim();
+      if (!seedText) {
+        document.getElementById('chatgpt-status').textContent = 'Please enter a word or two.';
+        return;
+      }
+      document.getElementById('chatgpt-status').textContent = 'Generating...';
+      try {
+        const resp = await fetch('/api/generate-prompt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ seed: seedText })
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+          throw new Error(data.error || 'API error');
+        }
+        document.getElementById('current-prompt').textContent = data.prompt;
+        document.getElementById('chatgpt-status').textContent = 'Prompt generated.';
+      } catch (err) {
+        document.getElementById('chatgpt-status').textContent = `Error: ${err.message}`;
+      }
+    };
 
     function updatePlayers() {
       playersDiv.innerHTML = '';
