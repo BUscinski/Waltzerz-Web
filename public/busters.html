@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Busters Host</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    #qr { margin: 20px; }
+    #players { margin: 20px; }
+    .player { margin: 5px; padding: 5px; border-radius: 5px; }
+    #messages { margin-top: 20px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto; }
+    .message { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>Busters Game Host</h1>
+  <div id="qr"></div>
+  <h2>Players:</h2>
+  <div id="players"></div>
+  <button id="start">Start Game</button>
+  <h2>Messages:</h2>
+  <div id="messages"></div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <script>
+    const socket = io();
+    const playersDiv = document.getElementById('players');
+    const messagesDiv = document.getElementById('messages');
+    const players = {};
+
+    // Generate QR code
+    const qr = new QRCode(document.getElementById('qr'), {
+      text: `${window.location.origin}/busters-phone.html`,
+      width: 256,
+      height: 256
+    });
+
+    socket.on('player_joined', (data) => {
+      const { id, name, color } = data;
+      players[id] = { name, color };
+      updatePlayers();
+    });
+
+    socket.on('player_left', (id) => {
+      delete players[id];
+      updatePlayers();
+    });
+
+    socket.on('message', (data) => {
+      const { id, text } = data;
+      const player = players[id];
+      if (player) {
+        const msgDiv = document.createElement('div');
+        msgDiv.className = 'message';
+        msgDiv.style.color = player.color;
+        msgDiv.textContent = `${player.name}: ${text}`;
+        messagesDiv.appendChild(msgDiv);
+      }
+    });
+
+    function updatePlayers() {
+      playersDiv.innerHTML = '';
+      for (const id in players) {
+        const player = players[id];
+        const div = document.createElement('div');
+        div.className = 'player';
+        div.style.backgroundColor = player.color;
+        div.textContent = player.name;
+        playersDiv.appendChild(div);
+      }
+    }
+
+    document.getElementById('start').onclick = () => {
+      socket.emit('start_game', 'busters');
+      document.getElementById('start').disabled = true;
+    };
+  </script>
+</body>
+</html>

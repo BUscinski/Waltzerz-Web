@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Busters Phone</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    input, button { font-size: 18px; margin: 10px; }
+    #input-area { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Busters Phone</h1>
+  <div id="join-area">
+    <input type="text" id="name" placeholder="Enter your name" />
+    <button id="join">Join</button>
+  </div>
+  <div id="input-area">
+    <input type="text" id="message" placeholder="Type a message" />
+    <button id="send">Send</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let gameStarted = false;
+
+    socket.on('game_started', () => {
+      gameStarted = true;
+      document.getElementById('join-area').style.display = 'none';
+      document.getElementById('input-area').style.display = 'block';
+    });
+
+    document.getElementById('join').onclick = () => {
+      const name = document.getElementById('name').value.trim();
+      if (name) {
+        socket.emit('join', { name, game: 'busters' });
+      }
+    };
+
+    document.getElementById('send').onclick = () => {
+      const text = document.getElementById('message').value.trim();
+      if (text) {
+        socket.emit('message', text);
+        document.getElementById('message').value = '';
+      }
+    };
+  </script>
+</body>
+</html>

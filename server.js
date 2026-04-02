@@ -19,10 +19,10 @@ io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.on("join", (data) => {
-    const { name } = data;
+    const { name, game } = data;
     const color = getRandomColor();
-    players[socket.id] = { name, color };
-    console.log(`Player joined: ${name} (${socket.id}) with color ${color}`);
+    players[socket.id] = { name, color, game };
+    console.log(`Player joined: ${name} (${socket.id}) with color ${color} for game ${game}`);
 
     io.emit("player_joined", { id: socket.id, name, color });
   });
@@ -49,9 +49,14 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("update_thresholds", (data) => {
-    console.log("Updating thresholds:", data);
-    io.emit("update_thresholds", data);
+  socket.on("start_game", (game) => {
+    console.log(`Starting game: ${game}`);
+    io.emit("game_started");
+  });
+
+  socket.on("message", (text) => {
+    console.log("Message:", text);
+    io.emit("message", { id: socket.id, text });
   });
 
   socket.on("reset", () => {
