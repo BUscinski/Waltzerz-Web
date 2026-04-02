@@ -158,7 +158,9 @@
               document.getElementById('jerk-status').textContent = `Accel Jerk: ${jerkAccelMagnitude.toFixed(2)}`;
               clearTimeout(jerkTimeout);
               jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 2000);
+              
               socket.emit("jerk", { type: "accel", value: jerkAccelMagnitude });
+              navigator.vibrate(200);
             }
 
             // Detect rotation jerk
@@ -168,6 +170,7 @@
               clearTimeout(jerkTimeout);
               jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 2000);
               socket.emit("jerk", { type: "rot", value: jerkRotMagnitude });
+              navigator.vibrate(200);
             }
           }
         }
