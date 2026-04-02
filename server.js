@@ -24,7 +24,22 @@ async function generatePrompt(seed) {
       inputs: `Generate a creative prompt based on these words: ${seed}. Keep it short and fun.`,
       parameters: { max_new_tokens: 50, temperature: 0.9 }
     });
-    return response.generated_text.replace(/Generate a creative prompt.*?words: .*?\. Keep it short and fun\./, '').trim();
+    console.log('Hugging Face raw response:', response);
+
+    // Handle multiple possible response formats
+    const rawText =
+      (typeof response === 'string' && response) ||
+      response.generated_text ||
+      (Array.isArray(response) && response[0]?.generated_text) ||
+      '';
+
+    const cleaned = rawText
+      .replace(/^Generate a creative prompt based on these words:.*?\.\s*Keep it short and fun\./i, '')
+      .trim();
+
+    const finalPrompt = cleaned || `Prompt based on: ${seed}`;
+    console.log('Cleaned prompt:', finalPrompt);
+    return finalPrompt;
   } catch (error) {
     console.error('Hugging Face error:', error);
     return `Prompt based on: ${seed}`;
@@ -68,13 +83,16 @@ io.on("connection", (socket) => {
   socket.on("start_game", async (data) => {
     const { game, seed } = data;
     console.log(`Starting game: ${game} with seed: ${seed}`);
-    
-    // Generate prompt from seed
+
+    // Tell clients game is starting, and they can show loading state
+    io.emit("game_started");
+    io.emit("prompt_loading");
+
+    // Generate prompt from seed (await so we only send once available)
     const prompt = await generatePrompt(seed);
     console.log(`Generated prompt: ${prompt}`);
-    
-    // Broadcast game start and prompt to all clients
-    io.emit("game_started");
+
+    // Broadcast the prompt when ready
     io.emit("prompt_generated", { prompt });
   });
 

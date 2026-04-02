@@ -94,8 +94,13 @@
       socket.emit('start_game', { game: 'busters', seed });
       document.getElementById('pre-game').style.display = 'none';
       document.getElementById('post-game').style.display = 'block';
+      document.getElementById('current-prompt').textContent = 'Generating prompt...';
     };
     
+    socket.on('prompt_loading', () => {
+      document.getElementById('current-prompt').textContent = 'Generating prompt...';
+    });
+
     socket.on('prompt_generated', (data) => {
       document.getElementById('current-prompt').textContent = data.prompt;
     });
