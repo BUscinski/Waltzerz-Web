@@ -26,11 +26,11 @@ function getRandomColor() {
 async function generatePrompt(seed) {
   try {
     const response = await hf.textGeneration({
-      model: 'gpt2',
+      model: 'tiiuae/falcon-7b-instruct',
       inputs: `Generate a creative prompt based on these words: ${seed}. Keep it short and fun.`,
       parameters: { max_new_tokens: 50, temperature: 0.9 }
     });
-    console.log('Hugging Face raw response:', response);
+    console.log('Raw response:', response);
 
     // Handle multiple possible response formats
     const rawText =
