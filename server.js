@@ -11,7 +11,7 @@ const io = new Server(server);
 // Use the new Hugging Face router endpoint (required by their updated API)
 // Ensure HF_API_KEY is set in environment variables on Render.
 const hf = new HfInference({
-  apiKey: `Bearer ${process.env.HF_API_KEY}`,
+  apiKey: process.env.HF_API_KEY,
   baseURL: 'https://router.huggingface.co'
 });
 
@@ -34,7 +34,7 @@ function getRandomColor() {
 async function generatePrompt(seed) {
   try {
     console.log('Using model:', MODEL_NAME);
-    console.log('auth header looks like this: ', hf.apiKey);
+    console.log('HF_API_KEY:', process.env.HF_API_KEY);
     const response = await hf.textGeneration({
       model: MODEL_NAME,
       inputs: `Generate a creative prompt based on these words: ${seed}. Keep it short and fun.`,
@@ -60,6 +60,7 @@ async function generatePrompt(seed) {
     console.log('Cleaned prompt:', cleaned);
     return cleaned;
   } catch (error) {
+    console.log('what is happening here?');
     console.error('Hugging Face error:', error);
     throw error;
   }
