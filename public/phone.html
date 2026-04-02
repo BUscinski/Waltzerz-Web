@@ -156,12 +156,12 @@
 
             if(!isJerkDetected)
             {
-                document.getElementById('x').textContent = smoothedData.x.toFixed(2);
-                document.getElementById('y').textContent = smoothedData.y.toFixed(2);
-                document.getElementById('z').textContent = smoothedData.z.toFixed(2);
-                document.getElementById('pitch').textContent = smoothedData.pitch.toFixed(2);
-                document.getElementById('roll').textContent = smoothedData.roll.toFixed(2);
-                document.getElementById('yaw').textContent = smoothedData.yaw.toFixed(2);
+                document.getElementById('x').textContent = jerkAccelX.toFixed(2);
+                document.getElementById('y').textContent = jerkAccelY.toFixed(2);
+                document.getElementById('z').textContent = jerkAccelZ.toFixed(2);
+                document.getElementById('pitch').textContent = jerkRotPitch.toFixed(2);
+                document.getElementById('roll').textContent = jerkRotRoll.toFixed(2);
+                document.getElementById('yaw').textContent = jerkRotYaw.toFixed(2);
             }
             // Detect accelerometer jerk
             if (jerkAccelMagnitude > ACCEL_JERK_THRESHOLD && !isJerkDetected) {
