@@ -154,13 +154,15 @@
             const jerkRotYaw = (smoothedData.yaw - prevSmoothed.yaw) / deltaTime;
             const jerkRotMagnitude = Math.sqrt(jerkRotPitch**2 + jerkRotRoll**2 + jerkRotYaw**2);
 
-            document.getElementById('x').textContent = smoothedData.x.toFixed(2);
-            document.getElementById('y').textContent = smoothedData.y.toFixed(2);
-            document.getElementById('z').textContent = smoothedData.z.toFixed(2);
-            document.getElementById('pitch').textContent = smoothedData.pitch.toFixed(2);
-            document.getElementById('roll').textContent = smoothedData.roll.toFixed(2);
-            document.getElementById('yaw').textContent = smoothedData.yaw.toFixed(2);
-
+            if(!isJerkDetected)
+            {
+                document.getElementById('x').textContent = smoothedData.x.toFixed(2);
+                document.getElementById('y').textContent = smoothedData.y.toFixed(2);
+                document.getElementById('z').textContent = smoothedData.z.toFixed(2);
+                document.getElementById('pitch').textContent = smoothedData.pitch.toFixed(2);
+                document.getElementById('roll').textContent = smoothedData.roll.toFixed(2);
+                document.getElementById('yaw').textContent = smoothedData.yaw.toFixed(2);
+            }
             // Detect accelerometer jerk
             if (jerkAccelMagnitude > ACCEL_JERK_THRESHOLD && !isJerkDetected) {
               console.log("Accelerometer jerk detected:", jerkAccelMagnitude.toFixed(2));
