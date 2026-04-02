@@ -78,15 +78,11 @@ io.on("connection", (socket) => {
     io.emit("prompt_generated", { prompt });
   });
 
-  socket.on("message", async (text) => {
-    console.log("Message:", text);
+  socket.on("message", (text) => {
+    console.log("Message from", socket.id, ":", text);
     
-    // Generate prompt from player input
-    const prompt = await generatePrompt(text);
-    console.log(`Generated prompt from player: ${prompt}`);
-    
-    // Emit the generated prompt back to host
-    io.emit("generated_prompt", { id: socket.id, prompt });
+    // Emit player response directly to host (no AI transformation)
+    io.emit("player_response", { id: socket.id, text });
   });
 
   socket.on("reset", () => {

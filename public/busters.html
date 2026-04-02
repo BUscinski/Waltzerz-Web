@@ -29,7 +29,7 @@
     </div>
   </div>
   
-  <h2>Player-Generated Prompts:</h2>
+  <h2>Player Responses:</h2>
   <div id="messages"></div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -58,8 +58,8 @@
       updatePlayers();
     });
 
-    socket.on('generated_prompt', (data) => {
-      const { id, prompt } = data;
+    socket.on('player_response', (data) => {
+      const { id, text } = data;
       const player = players[id];
       if (player) {
         const msgDiv = document.createElement('div');
@@ -68,7 +68,7 @@
         msgDiv.style.padding = '10px';
         msgDiv.style.marginBottom = '10px';
         msgDiv.style.backgroundColor = '#f9f9f9';
-        msgDiv.innerHTML = `<strong>${player.name}:</strong> <em>${prompt}</em>`;
+        msgDiv.innerHTML = `<strong>${player.name}:</strong> ${text}`;
         messagesDiv.appendChild(msgDiv);
       }
     });
