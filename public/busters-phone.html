@@ -16,8 +16,12 @@
     <button id="join">Join</button>
   </div>
   <div id="input-area">
-    <input type="text" id="message" placeholder="Type a message" />
-    <button id="send">Send</button>
+    <div id="prompt-display" style="background-color: #f0f0f0; padding: 15px; margin: 15px; border-radius: 5px;">
+      <p>Challenge:</p>
+      <p id="current-prompt" style="font-size: 16px; font-weight: bold;"></p>
+    </div>
+    <input type="text" id="message" placeholder="Type your response" />
+    <button id="send">Generate</button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -29,6 +33,10 @@
       gameStarted = true;
       document.getElementById('join-area').style.display = 'none';
       document.getElementById('input-area').style.display = 'block';
+    });
+
+    socket.on('prompt_generated', (data) => {
+      document.getElementById('current-prompt').textContent = data.prompt;
     });
 
     document.getElementById('join').onclick = () => {

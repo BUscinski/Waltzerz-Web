@@ -2,10 +2,12 @@ console.log("SERVER FILE IS RUNNING");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
+const { HfInference } = require("@huggingface/inference");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
+const hf = new HfInference();
 
 app.use(express.static("public"));
 
@@ -13,6 +15,20 @@ const players = {}; // socket.id -> {name, color}
 
 function getRandomColor() {
   return '#' + Math.floor(Math.random() * 16777215).toString(16);
+}
+
+async function generatePrompt(seed) {
+  try {
+    const response = await hf.textGeneration({
+      model: 'gpt2',
+      inputs: `Generate a creative prompt based on these words: ${seed}. Keep it short and fun.`,
+      parameters: { max_new_tokens: 50, temperature: 0.9 }
+    });
+    return response.generated_text.replace(/Generate a creative prompt.*?words: .*?\. Keep it short and fun\./, '').trim();
+  } catch (error) {
+    console.error('Hugging Face error:', error);
+    return `Prompt based on: ${seed}`;
+  }
 }
 
 io.on("connection", (socket) => {
@@ -49,14 +65,28 @@ io.on("connection", (socket) => {
     });
   });
 
-  socket.on("start_game", (game) => {
-    console.log(`Starting game: ${game}`);
+  socket.on("start_game", async (data) => {
+    const { game, seed } = data;
+    console.log(`Starting game: ${game} with seed: ${seed}`);
+    
+    // Generate prompt from seed
+    const prompt = await generatePrompt(seed);
+    console.log(`Generated prompt: ${prompt}`);
+    
+    // Broadcast game start and prompt to all clients
     io.emit("game_started");
+    io.emit("prompt_generated", { prompt });
   });
 
-  socket.on("message", (text) => {
+  socket.on("message", async (text) => {
     console.log("Message:", text);
-    io.emit("message", { id: socket.id, text });
+    
+    // Generate prompt from player input
+    const prompt = await generatePrompt(text);
+    console.log(`Generated prompt from player: ${prompt}`);
+    
+    // Emit the generated prompt back to host
+    io.emit("generated_prompt", { id: socket.id, prompt });
   });
 
   socket.on("reset", () => {

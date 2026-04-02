@@ -16,8 +16,20 @@
   <div id="qr"></div>
   <h2>Players:</h2>
   <div id="players"></div>
-  <button id="start">Start Game</button>
-  <h2>Messages:</h2>
+  
+  <div id="pre-game">
+    <input type="text" id="seed" placeholder="Enter seed (e.g., Pirate, best buy, bathroom)" />
+    <button id="start">Start Game</button>
+  </div>
+  
+  <div id="post-game" style="display: none;">
+    <div id="prompt-display" style="background-color: #f0f0f0; padding: 20px; margin: 20px; border-radius: 5px;">
+      <h3>Current Prompt:</h3>
+      <p id="current-prompt" style="font-size: 18px; font-weight: bold;"></p>
+    </div>
+  </div>
+  
+  <h2>Player-Generated Prompts:</h2>
   <div id="messages"></div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -46,14 +58,17 @@
       updatePlayers();
     });
 
-    socket.on('message', (data) => {
-      const { id, text } = data;
+    socket.on('generated_prompt', (data) => {
+      const { id, prompt } = data;
       const player = players[id];
       if (player) {
         const msgDiv = document.createElement('div');
         msgDiv.className = 'message';
         msgDiv.style.color = player.color;
-        msgDiv.textContent = `${player.name}: ${text}`;
+        msgDiv.style.padding = '10px';
+        msgDiv.style.marginBottom = '10px';
+        msgDiv.style.backgroundColor = '#f9f9f9';
+        msgDiv.innerHTML = `<strong>${player.name}:</strong> <em>${prompt}</em>`;
         messagesDiv.appendChild(msgDiv);
       }
     });
@@ -71,9 +86,19 @@
     }
 
     document.getElementById('start').onclick = () => {
-      socket.emit('start_game', 'busters');
-      document.getElementById('start').disabled = true;
+      const seed = document.getElementById('seed').value.trim();
+      if (!seed) {
+        alert('Please enter a seed');
+        return;
+      }
+      socket.emit('start_game', { game: 'busters', seed });
+      document.getElementById('pre-game').style.display = 'none';
+      document.getElementById('post-game').style.display = 'block';
     };
+    
+    socket.on('prompt_generated', (data) => {
+      document.getElementById('current-prompt').textContent = data.prompt;
+    });
   </script>
 </body>
 </html>
