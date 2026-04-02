@@ -90,7 +90,7 @@
 
     // Jerk detection thresholds (adjust based on phone calibration)
     let ACCEL_JERK_THRESHOLD = 50; // m/s³ per second
-    let ROT_JERK_THRESHOLD = 100; // degrees/s² per second
+    let ROT_JERK_THRESHOLD = 500; // degrees/s² per second
 
     document.getElementById("join").onclick = async () => {
       console.log("Join button clicked");
@@ -154,6 +154,13 @@
             const jerkRotYaw = (smoothedData.yaw - prevSmoothed.yaw) / deltaTime;
             const jerkRotMagnitude = Math.sqrt(jerkRotPitch**2 + jerkRotRoll**2 + jerkRotYaw**2);
 
+            document.getElementById('x').textContent = smoothedData.x.toFixed(2);
+            document.getElementById('y').textContent = smoothedData.y.toFixed(2);
+            document.getElementById('z').textContent = smoothedData.z.toFixed(2);
+            document.getElementById('pitch').textContent = smoothedData.pitch.toFixed(2);
+            document.getElementById('roll').textContent = smoothedData.roll.toFixed(2);
+            document.getElementById('yaw').textContent = smoothedData.yaw.toFixed(2);
+
             // Detect accelerometer jerk
             if (jerkAccelMagnitude > ACCEL_JERK_THRESHOLD && !isJerkDetected) {
               console.log("Accelerometer jerk detected:", jerkAccelMagnitude.toFixed(2));
@@ -181,15 +188,6 @@
         prevTime = currentTime;
         prevSmoothed = { ...smoothedData };
 
-        // Update the display with smoothed values only if no jerk detected
-        if (!isJerkDetected) {
-          document.getElementById('x').textContent = smoothedData.x.toFixed(2);
-          document.getElementById('y').textContent = smoothedData.y.toFixed(2);
-          document.getElementById('z').textContent = smoothedData.z.toFixed(2);
-          document.getElementById('pitch').textContent = smoothedData.pitch.toFixed(2);
-          document.getElementById('roll').textContent = smoothedData.roll.toFixed(2);
-          document.getElementById('yaw').textContent = smoothedData.yaw.toFixed(2);
-        }
 
         // Emit smoothed data to server
         socket.emit("imu", smoothedData);
