@@ -7,7 +7,13 @@ const { HfInference } = require("@huggingface/inference");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
-const hf = new HfInference();
+
+// Use the new Hugging Face router endpoint (required by their updated API)
+// Ensure HF_API_KEY is set in environment variables on Render.
+const hf = new HfInference({
+  apiKey: process.env.HF_API_KEY,
+  baseURL: 'https://router.huggingface.co'
+});
 
 app.use(express.static("public"));
 
