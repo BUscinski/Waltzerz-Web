@@ -102,7 +102,14 @@
     });
 
     socket.on('prompt_generated', (data) => {
+      document.getElementById('current-prompt').style.color = 'black';
       document.getElementById('current-prompt').textContent = data.prompt;
+    });
+
+    socket.on('prompt_error', (data) => {
+      document.getElementById('current-prompt').style.color = 'red';
+      document.getElementById('current-prompt').textContent = `Error: ${data.error}`;
+      console.error('Prompt generation error event:', data.error);
     });
   </script>
 </body>

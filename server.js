@@ -37,12 +37,15 @@ async function generatePrompt(seed) {
       .replace(/^Generate a creative prompt based on these words:.*?\.\s*Keep it short and fun\./i, '')
       .trim();
 
-    const finalPrompt = cleaned || `Prompt based on: ${seed}`;
-    console.log('Cleaned prompt:', finalPrompt);
-    return finalPrompt;
+    if (!cleaned) {
+      throw new Error('Empty generated prompt');
+    }
+
+    console.log('Cleaned prompt:', cleaned);
+    return cleaned;
   } catch (error) {
     console.error('Hugging Face error:', error);
-    return `Prompt based on: ${seed}`;
+    throw error;
   }
 }
 
@@ -88,12 +91,17 @@ io.on("connection", (socket) => {
     io.emit("game_started");
     io.emit("prompt_loading");
 
-    // Generate prompt from seed (await so we only send once available)
-    const prompt = await generatePrompt(seed);
-    console.log(`Generated prompt: ${prompt}`);
+    try {
+      // Generate prompt from seed (await so we only send once available)
+      const prompt = await generatePrompt(seed);
+      console.log(`Generated prompt: ${prompt}`);
 
-    // Broadcast the prompt when ready
-    io.emit("prompt_generated", { prompt });
+      // Broadcast the prompt when ready
+      io.emit("prompt_generated", { prompt });
+    } catch (error) {
+      console.error('Prompt generation failed:', error);
+      io.emit("prompt_error", { error: error.message || 'Prompt generation failed' });
+    }
   });
 
   socket.on("message", (text) => {
