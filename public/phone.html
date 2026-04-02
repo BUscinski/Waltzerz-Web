@@ -55,6 +55,7 @@
     socket.on("reset", () => {
       document.getElementById('jerk-status').textContent = '';
       clearTimeout(jerkTimeout);
+      isJerkDetected = false;
     });
 
     const FRAME_HISTORY = 10; // Number of past frames to keep for smoothing
@@ -85,6 +86,7 @@
     let prevTime = null;
     let prevSmoothed = null;
     let jerkTimeout;
+    let isJerkDetected = false; // Flag to prevent spamming jerk events
 
     // Jerk detection thresholds (adjust based on phone calibration)
     let ACCEL_JERK_THRESHOLD = 50; // m/s³ per second
@@ -153,7 +155,7 @@
             const jerkRotMagnitude = Math.sqrt(jerkRotPitch**2 + jerkRotRoll**2 + jerkRotYaw**2);
 
             // Detect accelerometer jerk
-            if (jerkAccelMagnitude > ACCEL_JERK_THRESHOLD) {
+            if (jerkAccelMagnitude > ACCEL_JERK_THRESHOLD && !isJerkDetected) {
               console.log("Accelerometer jerk detected:", jerkAccelMagnitude.toFixed(2));
               document.getElementById('jerk-status').textContent = `Accel Jerk: ${jerkAccelMagnitude.toFixed(2)}`;
               clearTimeout(jerkTimeout);
@@ -161,29 +163,33 @@
               
               socket.emit("jerk", { type: "accel", value: jerkAccelMagnitude });
               navigator.vibrate(200);
+              isJerkDetected = true;
             }
 
             // Detect rotation jerk
-            if (jerkRotMagnitude > ROT_JERK_THRESHOLD) {
+            if (jerkRotMagnitude > ROT_JERK_THRESHOLD && !isJerkDetected) {
               console.log("Rotation jerk detected:", jerkRotMagnitude.toFixed(2));
               document.getElementById('jerk-status').textContent = `Rot Jerk: ${jerkRotMagnitude.toFixed(2)}`;
               clearTimeout(jerkTimeout);
               jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 2000);
               socket.emit("jerk", { type: "rot", value: jerkRotMagnitude });
               navigator.vibrate(200);
+              isJerkDetected = true;
             }
           }
         }
         prevTime = currentTime;
         prevSmoothed = { ...smoothedData };
 
-        // Update the display with smoothed values
-        document.getElementById('x').textContent = smoothedData.x.toFixed(2);
-        document.getElementById('y').textContent = smoothedData.y.toFixed(2);
-        document.getElementById('z').textContent = smoothedData.z.toFixed(2);
-        document.getElementById('pitch').textContent = smoothedData.pitch.toFixed(2);
-        document.getElementById('roll').textContent = smoothedData.roll.toFixed(2);
-        document.getElementById('yaw').textContent = smoothedData.yaw.toFixed(2);
+        // Update the display with smoothed values only if no jerk detected
+        if (!isJerkDetected) {
+          document.getElementById('x').textContent = smoothedData.x.toFixed(2);
+          document.getElementById('y').textContent = smoothedData.y.toFixed(2);
+          document.getElementById('z').textContent = smoothedData.z.toFixed(2);
+          document.getElementById('pitch').textContent = smoothedData.pitch.toFixed(2);
+          document.getElementById('roll').textContent = smoothedData.roll.toFixed(2);
+          document.getElementById('yaw').textContent = smoothedData.yaw.toFixed(2);
+        }
 
         // Emit smoothed data to server
         socket.emit("imu", smoothedData);
