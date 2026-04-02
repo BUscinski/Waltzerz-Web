@@ -15,6 +15,14 @@ const hf = new HfInference({
   baseURL: 'https://router.huggingface.co'
 });
 
+// Pick model from environment variable (supports change without code edits)
+// Set HF_MODEL in Render to one of:
+//  - tiiuae/falcon-7b-instruct
+//  - google/flan-t5-small
+//  - bigcode/starcoder
+//  - <another router-compatible model>
+const MODEL_NAME = process.env.HF_MODEL || 'google/flan-t5-small';
+
 app.use(express.static("public"));
 
 const players = {}; // socket.id -> {name, color}
@@ -25,8 +33,9 @@ function getRandomColor() {
 
 async function generatePrompt(seed) {
   try {
+    console.log('Using model:', MODEL_NAME);
     const response = await hf.textGeneration({
-      model: 'tiiuae/falcon-7b-instruct',
+      model: MODEL_NAME,
       inputs: `Generate a creative prompt based on these words: ${seed}. Keep it short and fun.`,
       parameters: { max_new_tokens: 50, temperature: 0.9 }
     });
