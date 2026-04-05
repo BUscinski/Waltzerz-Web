@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Shake Weight Phone</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f5f5f5; }
+    input, button { font-size: 18px; margin: 10px; padding: 10px; }
+    #join-area { display: block; }
+    #game-area { display: none; text-align: center; }
+    #shake-screen { font-size: 48px; font-weight: bold; color: #ff6600; margin: 40px 0; }
+    #jerk-score { font-size: 36px; font-weight: bold; color: #333; margin: 30px 0; }
+    #status { font-size: 18px; color: #666; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>Shake Weight Phone</h1>
+  
+  <div id="join-area">
+    <input type="text" id="name" placeholder="Enter your name" />
+    <button id="join">Join Game</button>
+  </div>
+
+  <div id="game-area">
+    <div id="countdown-display" style="font-size: 60px; font-weight: bold; margin: 40px 0; color: #ff6600;"></div>
+    <div id="shake-screen">🎯 SHAKE! 🎯</div>
+    <div id="jerk-score">Your Jerk: <span id="current-jerk">0</span></div>
+    <div id="status"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let gameActive = false;
+    let currentJerkScore = 0;
+    let sendInterval = null;
+
+    // Sensor smoothing and jerk detection
+    const FRAME_HISTORY = 20;
+    let accelXHistory = [];
+    let accelYHistory = [];
+    let accelZHistory = [];
+    let rotXHistory = [];
+    let rotYHistory = [];
+    let rotZHistory = [];
+
+    const JERK_DEBOUNCE = 100; // ms between jerk updates to server
+
+    function average(arr) {
+      if (arr.length === 0) return 0;
+      return arr.reduce((a, b) => a + b, 0) / arr.length;
+    }
+
+    function maintainHistory(arr, value) {
+      arr.push(value);
+      if (arr.length > FRAME_HISTORY) {
+        arr.shift();
+      }
+    }
+
+    socket.on('game_started', () => {
+      gameActive = true;
+      document.getElementById('join-area').style.display = 'none';
+      document.getElementById('game-area').style.display = 'block';
+      currentJerkScore = 0;
+      document.getElementById('status').textContent = 'Game in progress! Shake your phone!';
+    });
+
+    socket.on('countdown', (data) => {
+      const { time } = data;
+      if (time > 0) {
+        document.getElementById('countdown-display').textContent = time;
+      } else {
+        document.getElementById('countdown-display').textContent = 'GO!';
+      }
+    });
+
+    socket.on('game_ended', () => {
+      gameActive = false;
+      document.getElementById('shake-screen').style.display = 'none';
+      document.getElementById('status').textContent = 'Game ended! Check the host for results.';
+      if (sendInterval) clearInterval(sendInterval);
+    });
+
+    socket.on('reset_game', () => {
+      gameActive = false;
+      currentJerkScore = 0;
+      document.getElementById('jerk-score').style.display = 'none';
+      document.getElementById('countdown-display').textContent = '';
+      document.getElementById('shake-screen').style.display = 'block';
+      document.getElementById('game-area').style.display = 'none';
+      document.getElementById('join-area').style.display = 'block';
+      document.getElementById('status').textContent = '';
+      if (sendInterval) clearInterval(sendInterval);
+    });
+
+    document.getElementById('join').onclick = async () => {
+      const name = document.getElementById('name').value.trim();
+      if (name) {
+        socket.emit('join', { name, game: 'shakeweight' });
+
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+          await DeviceMotionEvent.requestPermission();
+        }
+
+        window.addEventListener('devicemotion', (event) => {
+          const rawData = {
+            x: event.acceleration.x || 0,
+            y: event.acceleration.y || 0,
+            z: event.acceleration.z || 0,
+            rotX: event.rotationRate.alpha || 0,
+            rotY: event.rotationRate.beta || 0,
+            rotZ: event.rotationRate.gamma || 0
+          };
+
+          maintainHistory(accelXHistory, rawData.x);
+          maintainHistory(accelYHistory, rawData.y);
+          maintainHistory(accelZHistory, rawData.z);
+          maintainHistory(rotXHistory, rawData.rotX);
+          maintainHistory(rotYHistory, rawData.rotY);
+          maintainHistory(rotZHistory, rawData.rotZ);
+
+          if (gameActive) {
+            const smoothedAccelX = average(accelXHistory);
+            const smoothedAccelY = average(accelYHistory);
+            const smoothedAccelZ = average(accelZHistory);
+            const smoothedRotX = average(rotXHistory);
+            const smoothedRotY = average(rotYHistory);
+            const smoothedRotZ = average(rotZHistory);
+
+            // Calculate jerk magnitude (change in acceleration)
+            if (accelXHistory.length > 1) {
+              const jerkAccelMag = Math.sqrt(
+                Math.pow(smoothedAccelX - (accelXHistory[accelXHistory.length - 2] || 0), 2) +
+                Math.pow(smoothedAccelY - (accelYHistory[accelYHistory.length - 2] || 0), 2) +
+                Math.pow(smoothedAccelZ - (accelZHistory[accelZHistory.length - 2] || 0), 2)
+              );
+              currentJerkScore += jerkAccelMag;
+              document.getElementById('current-jerk').textContent = Math.floor(currentJerkScore);
+            }
+          }
+        });
+      }
+    };
+
+    // Send jerk score to server periodically
+    socket.on('game_started', () => {
+      if (sendInterval) clearInterval(sendInterval);
+      sendInterval = setInterval(() => {
+        if (gameActive) {
+          socket.emit('jerk_update', { score: currentJerkScore });
+        }
+      }, 500); // Send every 500ms
+    });
+  </script>
+</body>
+</html>

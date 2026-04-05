@@ -57,6 +57,15 @@ app.post('/api/generate-prompt', async (req, res) => {
 
 const players = {}; // socket.id -> {name, color}
 
+// ShakeWeight game state
+let shakeweightState = {
+  active: false,
+  threshold: 500,
+  scores: {}, // socket.id -> jerk score
+  startTime: null,
+  countdownInterval: null
+};
+
 function getRandomColor() {
   return '#' + Math.floor(Math.random() * 16777215).toString(16);
 }
@@ -105,7 +114,13 @@ io.on("connection", (socket) => {
     players[socket.id] = { name, color, game };
     console.log(`Player joined: ${name} (${socket.id}) with color ${color} for game ${game}`);
 
-    io.emit("player_joined", { id: socket.id, name, color });
+    // For ShakeWeight game, emit with playerId and playername
+    if (game === 'shakeweight') {
+      io.emit("player_joined", { playerId: socket.id, playerName: name });
+      shakeweightState.scores[socket.id] = 0;
+    } else {
+      io.emit("player_joined", { id: socket.id, name, color });
+    }
   });
 
   socket.on("imu", (data) => {
@@ -166,11 +181,88 @@ io.on("connection", (socket) => {
     io.emit("reset");
   });
 
+  socket.on("start_shakeweight_game", (data) => {
+    const { threshold } = data;
+    console.log(`Starting ShakeWeight game with threshold: ${threshold}`);
+    
+    shakeweightState.active = true;
+    shakeweightState.threshold = threshold;
+    shakeweightState.scores = {};
+    
+    // Initialize scores for all connected players
+    for (const id in players) {
+      if (players[id].game === 'shakeweight') {
+        shakeweightState.scores[id] = 0;
+      }
+    }
+
+    io.emit("game_started");
+
+    // Start countdown: 3, 2, 1, GO!
+    let countdown = 3;
+    shakeweightState.countdownInterval = setInterval(() => {
+      io.emit("countdown", { time: countdown });
+      countdown--;
+
+      if (countdown < 0) {
+        clearInterval(shakeweightState.countdownInterval);
+        io.emit("countdown", { time: 0 });
+      }
+    }, 1000);
+  });
+
+  socket.on("jerk_update", (data) => {
+    const { score } = data;
+    if (!shakeweightState.active || !players[socket.id]) return;
+
+    shakeweightState.scores[socket.id] = score;
+
+    // Emit updated scores to host
+    io.emit("jerk_scores_update", { scores: shakeweightState.scores });
+
+    // Check if anyone reached threshold
+    if (score >= shakeweightState.threshold) {
+      shakeweightState.active = false;
+      clearInterval(shakeweightState.countdownInterval);
+
+      const winnerName = players[socket.id].name;
+      const winnerData = {
+        id: socket.id,
+        name: winnerName
+      };
+
+      io.emit("game_ended", {
+        winner: winnerData,
+        finalScores: shakeweightState.scores
+      });
+
+      // Tell all phone clients game ended
+      io.emit("game_ended");
+    }
+  });
+
+  socket.on("reset_shakeweight_game", () => {
+    console.log("Resetting ShakeWeight game");
+    shakeweightState.active = false;
+    shakeweightState.scores = {};
+    if (shakeweightState.countdownInterval) {
+      clearInterval(shakeweightState.countdownInterval);
+    }
+    io.emit("reset_game");
+  });
+
   socket.on("disconnect", () => {
     if (players[socket.id]) {
-      const { name, color } = players[socket.id];
+      const { name, color, game } = players[socket.id];
       console.log(`Player left: ${name} (${socket.id})`);
-      io.emit("player_left", { id: socket.id, name, color });
+      
+      if (game === 'shakeweight') {
+        io.emit("player_left", { playerId: socket.id });
+        delete shakeweightState.scores[socket.id];
+      } else {
+        io.emit("player_left", { id: socket.id, name, color });
+      }
+      
       delete players[socket.id];
     }
   });

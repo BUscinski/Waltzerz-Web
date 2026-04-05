@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Shake Weight</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f5f5; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .section { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1 { color: #ff6600; text-align: center; }
+    h2 { color: #333; border-bottom: 2px solid #ff6600; padding-bottom: 10px; }
+    
+    #qr-display { text-align: center; }
+    #qrcode { display: inline-block; padding: 20px; background: white; border: 2px solid #ff6600; }
+    
+    .controls { text-align: center; }
+    input, button { font-size: 16px; padding: 10px 20px; margin: 10px; border: 1px solid #ccc; border-radius: 4px; }
+    button { background-color: #ff6600; color: white; cursor: pointer; border: none; }
+    button:hover { background-color: #e55a00; }
+    button:disabled { background-color: #ccc; cursor: not-allowed; }
+    
+    .threshold-control { text-align: center; margin: 20px 0; }
+    .threshold-control input { width: 100px; }
+    .threshold-control span { margin-left: 10px; font-size: 18px; font-weight: bold; }
+    
+    #countdown-display { font-size: 60px; font-weight: bold; text-align: center; color: #ff6600; margin: 20px 0; }
+    
+    .player-list { margin: 20px 0; }
+    .player-item { 
+      background: #f9f9f9; 
+      padding: 15px; 
+      margin: 10px 0; 
+      border-radius: 4px; 
+      border-left: 5px solid #ff6600;
+    }
+    .player-name { font-weight: bold; font-size: 18px; }
+    .player-score { font-size: 16px; color: #555; margin-top: 8px; }
+    
+    .progress-bar-container { 
+      background-color: #e0e0e0; 
+      height: 20px; 
+      border-radius: 10px; 
+      overflow: hidden; 
+      margin-top: 8px;
+    }
+    .progress-bar { 
+      background-color: #ff6600; 
+      height: 100%; 
+      width: 0%; 
+      transition: width 0.3s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    
+    #leaderboard { display: none; text-align: center; }
+    .winner-banner { 
+      background-color: #ff6600; 
+      color: white; 
+      font-size: 36px; 
+      font-weight: bold;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+    }
+    .leaderboard-entry { 
+      background: #f9f9f9; 
+      padding: 15px; 
+      margin: 10px 0; 
+      border-radius: 4px;
+      font-size: 18px;
+    }
+    .leaderboard-entry.first { background: #ffdd99; font-weight: bold; }
+    .leaderboard-entry.second { background: #e8e8e8; }
+    .leaderboard-entry.third { background: #f4e4c1; }
+    
+    #game-status { 
+      font-size: 18px; 
+      text-align: center; 
+      color: #666;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎯 Shake Weight 🎯</h1>
+    
+    <div class="section" id="qr-display">
+      <h2>Join Game</h2>
+      <p>Scan this QR code to join:</p>
+      <div id="qrcode"></div>
+    </div>
+
+    <div class="section">
+      <h2>Game Settings</h2>
+      <div class="threshold-control">
+        <label for="threshold-input">Jerk Threshold:</label>
+        <input type="number" id="threshold-input" value="500" min="100" max="5000" step="50" />
+        <span id="threshold-display">500</span>
+      </div>
+      <p style="font-size: 14px; color: #666; margin-top: 10px;">Set the jerk score threshold. First player to reach this wins!</p>
+    </div>
+
+    <div class="section controls">
+      <button id="start-btn" disabled>Start Game</button>
+      <button id="reset-btn">Reset Game</button>
+    </div>
+
+    <div id="countdown-display"></div>
+
+    <div class="section" id="players-section" style="display: none;">
+      <h2>Player Scores</h2>
+      <div id="game-status"></div>
+      <div class="player-list" id="player-list"></div>
+    </div>
+
+    <div id="leaderboard" class="section">
+      <h2>Game Over!</h2>
+      <div class="winner-banner" id="winner-banner"></div>
+      <div id="leaderboard-list"></div>
+      <button id="play-again-btn" style="margin-top: 20px;">Play Again</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let players = {};
+    let gameActive = false;
+    let countdownInterval = null;
+    let jerkThreshold = 500;
+    const phoneUrl = `${window.location.protocol}//${window.location.host}/shakeweight-phone.html`;
+
+    // Generate QR code
+    function generateQR() {
+      document.getElementById('qrcode').innerHTML = '';
+      new QRCode(document.getElementById('qrcode'), {
+        text: phoneUrl,
+        width: 300,
+        height: 300,
+        colorDark: '#ff6600',
+        colorLight: '#ffffff'
+      });
+    }
+    generateQR();
+
+    // Update threshold display
+    document.getElementById('threshold-input').addEventListener('change', (e) => {
+      jerkThreshold = parseInt(e.target.value);
+      document.getElementById('threshold-display').textContent = jerkThreshold;
+    });
+
+    document.getElementById('start-btn').onclick = () => {
+      if (Object.keys(players).length > 0) {
+        socket.emit('start_shakeweight_game', { threshold: jerkThreshold });
+        document.getElementById('threshold-input').disabled = true;
+      }
+    };
+
+    document.getElementById('reset-btn').onclick = () => {
+      socket.emit('reset_shakeweight_game');
+      location.reload();
+    };
+
+    document.getElementById('play-again-btn').onclick = () => {
+      socket.emit('reset_shakeweight_game');
+      location.reload();
+    };
+
+    socket.on('player_joined', (data) => {
+      const { playerId, playerName } = data;
+      players[playerId] = { name: playerName, jerk: 0 };
+      updatePlayersList();
+      
+      if (Object.keys(players).length >= 1) {
+        document.getElementById('start-btn').disabled = false;
+      }
+    });
+
+    socket.on('player_left', (data) => {
+      const { playerId } = data;
+      delete players[playerId];
+      updatePlayersList();
+      
+      if (Object.keys(players).length === 0) {
+        document.getElementById('start-btn').disabled = true;
+      }
+    });
+
+    socket.on('countdown', (data) => {
+      const { time } = data;
+      if (time > 0) {
+        document.getElementById('countdown-display').textContent = time;
+      } else {
+        document.getElementById('countdown-display').textContent = 'GO!';
+        setTimeout(() => {
+          document.getElementById('countdown-display').textContent = '';
+        }, 1000);
+      }
+    });
+
+    socket.on('jerk_scores_update', (data) => {
+      const { scores } = data;
+      Object.keys(scores).forEach(playerId => {
+        if (players[playerId]) {
+          players[playerId].jerk = scores[playerId];
+        }
+      });
+      updatePlayersList();
+    });
+
+    socket.on('game_ended', (data) => {
+      const { winner, finalScores } = data;
+      gameActive = false;
+      document.getElementById('players-section').style.display = 'none';
+      document.getElementById('leaderboard').style.display = 'block';
+      
+      document.getElementById('winner-banner').textContent = `🏆 ${winner.name} Wins! 🏆`;
+      
+      const leaderboard = Object.entries(finalScores)
+        .sort((a, b) => b[1] - a[1])
+        .map((entry, index) => {
+          const playerId = entry[0];
+          const score = entry[1];
+          const playerName = players[playerId].name;
+          let cssClass = '';
+          if (index === 0) cssClass = 'first';
+          else if (index === 1) cssClass = 'second';
+          else if (index === 2) cssClass = 'third';
+          return `<div class="leaderboard-entry ${cssClass}">${index + 1}. ${playerName} - ${Math.floor(score)} jerk</div>`;
+        })
+        .join('');
+      
+      document.getElementById('leaderboard-list').innerHTML = leaderboard;
+    });
+
+    socket.on('game_started', () => {
+      gameActive = true;
+      document.getElementById('qr-display').style.display = 'none';
+      document.getElementById('countdown-display').textContent = '';
+      document.getElementById('players-section').style.display = 'block';
+      document.getElementById('start-btn').disabled = true;
+      document.getElementById('threshold-input').disabled = true;
+    });
+
+    function updatePlayersList() {
+      const playerList = document.getElementById('player-list');
+      playerList.innerHTML = Object.entries(players)
+        .map(([id, player]) => {
+          const percentage = Math.min((player.jerk / jerkThreshold) * 100, 100);
+          return `
+            <div class="player-item">
+              <div class="player-name">${player.name}</div>
+              <div class="player-score">Jerk: ${Math.floor(player.jerk)} / ${jerkThreshold}</div>
+              <div class="progress-bar-container">
+                <div class="progress-bar" style="width: ${percentage}%">
+                  ${percentage > 10 ? Math.floor(percentage) + '%' : ''}
+                </div>
+              </div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+  </script>
+</body>
+</html>
