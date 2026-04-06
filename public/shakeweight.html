@@ -175,8 +175,8 @@
     socket.on('player_joined', (data) => {
       const { playerId, playerName } = data;
       players[playerId] = { name: playerName, jerk: 0 };
+      document.getElementById('players-section').style.display = 'block'; // 👈 ADD THIS
       updatePlayersList();
-      
       if (Object.keys(players).length >= 1) {
         document.getElementById('start-btn').disabled = false;
       }
@@ -205,14 +205,28 @@
     });
 
     socket.on('jerk_scores_update', (data) => {
-      const { scores } = data;
-      Object.keys(scores).forEach(playerId => {
-        if (players[playerId]) {
-          players[playerId].jerk = scores[playerId];
-        }
-      });
-      updatePlayersList();
+    if (!gameActive) return; 
+
+    const { scores } = data;
+        Object.keys(scores).forEach(playerId => {
+            if (players[playerId]) {
+                players[playerId].jerk = scores[playerId];
+            }
+        });
+
+        updatePlayersList();
     });
+    
+    
+    // socket.on('jerk_scores_update', (data) => {
+    //   const { scores } = data;
+    //   Object.keys(scores).forEach(playerId => {
+    //     if (players[playerId]) {
+    //       players[playerId].jerk = scores[playerId];
+    //     }
+    //   });
+    //   updatePlayersList();
+    // });
 
     socket.on('game_ended', (data) => {
       const { winner, finalScores } = data;
@@ -241,15 +255,25 @@
 
     socket.on('game_started', () => {
       gameActive = true;
+
+      Object.keys(players).forEach(id => {
+        players[id].jerk = 0;
+      });
+
+      updatePlayersList();
+
       document.getElementById('qr-display').style.display = 'none';
       document.getElementById('countdown-display').textContent = '';
-      document.getElementById('players-section').style.display = 'block';
+      //document.getElementById('players-section').style.display = 'block';
       document.getElementById('start-btn').disabled = true;
       document.getElementById('threshold-input').disabled = true;
     });
 
     function updatePlayersList() {
       const playerList = document.getElementById('player-list');
+      document.getElementById('game-status').textContent = gameActive
+        ? 'Game in progress!'
+        : 'Waiting for game to start...';
       playerList.innerHTML = Object.entries(players)
         .map(([id, player]) => {
           const percentage = Math.min((player.jerk / jerkThreshold) * 100, 100);
