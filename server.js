@@ -2,58 +2,38 @@ console.log("SERVER FILE IS RUNNING");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const { HfInference } = require("@huggingface/inference");
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// OpenAI endpoint for ChatGPT prompt generation (option 2)
 const { OpenAI } = require('openai');
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-// Use the new Hugging Face router endpoint (required by their updated API)
-// Ensure HF_API_KEY is set in environment variables on Render.
-const hf = new HfInference({
-  apiKey: process.env.HF_API_KEY,
-  baseURL: 'https://router.huggingface.co'
+const groq = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: 'https://api.groq.com/openai/v1'
 });
 
-// Pick model from environment variable (supports change without code edits)
-// Set HF_MODEL in Render to one of:
-//  - tiiuae/falcon-7b-instruct
-//  - google/flan-t5-small
-//  - bigcode/starcoder
-//  - <another router-compatible model>
-const MODEL_NAME = process.env.HF_MODEL || 'google/flan-t5-small';
+const MODEL_NAME = 'llama-3.1-8b-instant';
 
 app.use(express.static("public"));
 app.use(express.json());
 
-app.post('/api/generate-prompt', async (req, res) => {
-  try {
-    const { seed } = req.body;
-    if (!seed || typeof seed !== 'string') {
-      return res.status(400).json({ error: 'seed is required' });
-    }
+async function generatePrompt(seed) {
+  const completion = await groq.chat.completions.create({
+    model: MODEL_NAME,
+    messages: [
+      { role: 'system', content: 'You are a creative prompt generator for a party game like Quiplash. Generate a single short, funny, fill-in-the-blank or open-ended question. No explanation, just the prompt.' },
+      { role: 'user', content: `Generate a Quiplash-style prompt using this theme: ${seed}` }
+    ],
+    max_tokens: 80,
+    temperature: 0.9
+  });
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: 'You are a creative game prompt generator.' },
-        { role: 'user', content: `Create a quiplash-like prompt from this keyword/phrase: ${seed}` }
-      ],
-      max_tokens: 80,
-      temperature: 0.9
-    });
-
-    const generated = completion.choices?.[0]?.message?.content || '';
-    return res.json({ prompt: generated.trim() });
-  } catch (error) {
-    console.error('OpenAI generation error:', error);
-    return res.status(500).json({ error: 'Failed to generate prompt' });
-  }
-});
+  const prompt = completion.choices?.[0]?.message?.content?.trim() || '';
+  console.log('Groq result:', prompt);
+  if (!prompt) throw new Error('Empty response from Groq');
+  return prompt;
+}
 
 const players = {}; // socket.id -> {name, color}
 
@@ -70,40 +50,6 @@ function getRandomColor() {
   return '#' + Math.floor(Math.random() * 16777215).toString(16);
 }
 
-async function generatePrompt(seed) {
-  try {
-    console.log('Using model:', MODEL_NAME);
-    console.log('HF_API_KEY:', process.env.HF_API_KEY);
-    const response = await hf.textGeneration({
-      model: MODEL_NAME,
-      inputs: `Generate a creative prompt based on these words: ${seed}. Keep it short and fun.`,
-      parameters: { max_new_tokens: 50, temperature: 0.9 }
-    });
-    console.log('Raw response:', response);
-
-    // Handle multiple possible response formats
-    const rawText =
-      (typeof response === 'string' && response) ||
-      response.generated_text ||
-      (Array.isArray(response) && response[0]?.generated_text) ||
-      '';
-
-    const cleaned = rawText
-      .replace(/^Generate a creative prompt based on these words:.*?\.\s*Keep it short and fun\./i, '')
-      .trim();
-
-    if (!cleaned) {
-      throw new Error('Empty generated prompt');
-    }
-
-    console.log('Cleaned prompt:', cleaned);
-    return cleaned;
-  } catch (error) {
-    console.log('what is happening here?');
-    console.error('Hugging Face error:', error);
-    throw error;
-  }
-}
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
