@@ -1,58 +1,332 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Busters Phone</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Busters</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-    input, button { font-size: 18px; margin: 10px; }
-    #input-area { display: none; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif; margin: 0; padding: 0;
+      background: #1a1a2e; color: #eee; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .screen { display: none; width: 100%; max-width: 500px; padding: 24px; flex-direction: column; align-items: center; }
+    .screen.active { display: flex; }
+
+    h1 { color: #e94560; margin: 0 0 24px; font-size: 32px; }
+    h2 { color: #e94560; margin: 0 0 12px; text-align: center; }
+
+    .card { background: #16213e; border-radius: 12px; padding: 20px; width: 100%; margin-bottom: 16px; }
+
+    .prompt-text { font-size: 22px; font-weight: bold; text-align: center; color: #fff; line-height: 1.4; }
+
+    input[type="text"], textarea {
+      width: 100%; padding: 14px; font-size: 18px;
+      border: 2px solid #0f3460; border-radius: 8px;
+      background: #0f3460; color: #fff; margin-bottom: 12px; outline: none;
+    }
+    input[type="text"]:focus, textarea:focus { border-color: #e94560; }
+    textarea { resize: none; height: 110px; }
+
+    button.primary {
+      width: 100%; padding: 16px; font-size: 20px; font-weight: bold;
+      background: #e94560; color: white; border: none;
+      border-radius: 8px; cursor: pointer; margin-top: 4px;
+    }
+    button.primary:hover { background: #c73652; }
+    button.primary:disabled { background: #555; cursor: not-allowed; }
+
+    .timer { font-size: 40px; font-weight: bold; color: #e94560; text-align: center; margin: 8px 0; }
+
+    .status-msg { text-align: center; color: #aaa; font-size: 18px; margin: 24px 0; line-height: 1.5; }
+
+    .answer-option {
+      background: #0f3460; border-radius: 8px; padding: 14px 16px;
+      margin-bottom: 10px; display: flex; align-items: flex-start; gap: 12px;
+      cursor: pointer; border: 2px solid transparent; width: 100%;
+    }
+    .answer-option.selected { border-color: #e94560; background: #1a2a5e; }
+    .answer-option input[type="radio"] { width: 20px; height: 20px; margin-top: 3px; flex-shrink: 0; accent-color: #e94560; }
+    .answer-option-text { font-size: 18px; line-height: 1.4; }
+    .ai-note { font-size: 12px; color: #888; }
+
+    #error-msg { color: #e94560; text-align: center; font-size: 15px; min-height: 20px; margin-bottom: 8px; }
   </style>
 </head>
 <body>
-  <h1>Busters Phone</h1>
-  <div id="join-area">
-    <input type="text" id="name" placeholder="Enter your name" />
-    <button id="join">Join</button>
-  </div>
-  <div id="input-area">
-    <div id="prompt-display" style="background-color: #f0f0f0; padding: 15px; margin: 15px; border-radius: 5px;">
-      <p>Challenge:</p>
-      <p id="current-prompt" style="font-size: 16px; font-weight: bold;"></p>
+
+  <!-- JOIN -->
+  <div id="screen-join" class="screen active">
+    <h1>Busters</h1>
+    <div class="card">
+      <input type="text" id="name-input" placeholder="Your name" maxlength="20" />
+      <button class="primary" id="join-btn">Join Game</button>
     </div>
-    <input type="text" id="message" placeholder="Type your response" />
-    <button id="send">Send</button>
+  </div>
+
+  <!-- WAITING -->
+  <div id="screen-waiting" class="screen">
+    <h1>Busters</h1>
+    <p class="status-msg" id="waiting-msg">Please wait...</p>
+  </div>
+
+  <!-- PROMPTING: you are the prompter -->
+  <div id="screen-prompting-own" class="screen">
+    <h1>Busters</h1>
+    <div class="card">
+      <h2>You're up! 🎤</h2>
+      <p style="text-align:center;color:#aaa;margin:0 0 16px">Give the AI a topic or theme and it'll create the prompt for everyone.</p>
+      <input type="text" id="seed-input" placeholder="e.g. awkward dates, office life, pirates..." />
+      <div id="error-msg"></div>
+      <button class="primary" id="seed-submit-btn">Generate Prompt</button>
+    </div>
+  </div>
+
+  <!-- PROMPTING: waiting for someone else -->
+  <div id="screen-prompting-other" class="screen">
+    <h1>Busters</h1>
+    <p class="status-msg" id="prompting-other-msg">Waiting for the prompt...</p>
+  </div>
+
+  <!-- ANSWERING -->
+  <div id="screen-answering" class="screen">
+    <h1>Busters</h1>
+    <div class="card">
+      <p class="prompt-text" id="answering-prompt"></p>
+    </div>
+    <div class="timer" id="answering-timer"></div>
+    <div class="card" id="answer-input-area">
+      <textarea id="answer-input" placeholder="Type your answer..."></textarea>
+      <button class="primary" id="answer-submit-btn">Submit Answer</button>
+    </div>
+    <p class="status-msg" id="answer-submitted-msg" style="display:none">
+      Answer submitted!<br>Waiting for everyone else...
+    </p>
+  </div>
+
+  <!-- VOTING -->
+  <div id="screen-voting" class="screen">
+    <h1>Busters</h1>
+    <div class="card">
+      <p class="prompt-text" id="voting-prompt-text"></p>
+    </div>
+    <div class="timer" id="voting-timer"></div>
+    <div id="voting-answers" style="width:100%"></div>
+    <div style="width:100%">
+      <button class="primary" id="vote-submit-btn">Submit Vote</button>
+      <p class="status-msg" id="vote-submitted-msg" style="display:none">
+        Vote submitted!<br>Waiting for results...
+      </p>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div id="screen-results" class="screen">
+    <h1>Busters</h1>
+    <p class="status-msg">Round over!<br>Check the screen for results.</p>
+  </div>
+
+  <!-- SUMMARY -->
+  <div id="screen-summary" class="screen">
+    <h1>Busters</h1>
+    <p class="status-msg">Game over!<br>Check the screen for the final results. 🏆</p>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io();
-    let gameStarted = false;
+    const socket = io('/busters');
+    let myName = '';
+    let timerInterval = null;
+    let amPrompter = false;
 
-    socket.on('game_started', () => {
-      gameStarted = true;
-      document.getElementById('join-area').style.display = 'none';
-      document.getElementById('input-area').style.display = 'block';
-    });
+    // ── Helpers ────────────────────────────────────────────────────────────────
 
-    socket.on('prompt_generated', (data) => {
-      document.getElementById('current-prompt').textContent = data.prompt;
-    });
+    function showScreen(name) {
+      document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+      const el = document.getElementById('screen-' + name);
+      if (el) el.classList.add('active');
+    }
 
-    document.getElementById('join').onclick = () => {
-      const name = document.getElementById('name').value.trim();
-      if (name) {
-        socket.emit('join', { name, game: 'busters' });
-      }
+    function startCountdown(secs, elId) {
+      clearInterval(timerInterval);
+      let remaining = secs;
+      const el = document.getElementById(elId);
+      const tick = () => { if (el) el.textContent = remaining + 's'; };
+      tick();
+      timerInterval = setInterval(() => {
+        remaining--;
+        if (remaining <= 0) { clearInterval(timerInterval); if (el) el.textContent = ''; }
+        else tick();
+      }, 1000);
+    }
+
+    // ── Join ──────────────────────────────────────────────────────────────────
+
+    document.getElementById('join-btn').onclick = () => {
+      myName = document.getElementById('name-input').value.trim();
+      if (!myName) return;
+      document.getElementById('join-btn').disabled = true;
+      socket.emit('join', { name: myName });
     };
 
-    document.getElementById('send').onclick = () => {
-      const text = document.getElementById('message').value.trim();
-      if (text) {
-        socket.emit('message', text);
-        document.getElementById('message').value = '';
+    socket.on('player_joined', ({ id }) => {
+      if (id === socket.id) {
+        showScreen('waiting');
+        document.getElementById('waiting-msg').textContent = 'Joined! Waiting to start...';
       }
+    });
+
+    // ── State restore on reconnect ────────────────────────────────────────────
+
+    socket.on('game_state', ({ phase, players, prompterIndex, prompterName, currentPrompt }) => {
+      if (!myName) return; // not joined yet, ignore
+      const isPrompter = players[prompterIndex]?.id === socket.id;
+
+      if (phase === 'lobby' || phase === 'prompting') {
+        if (phase === 'prompting' && isPrompter) {
+          showScreen('prompting-own');
+        } else if (phase === 'prompting') {
+          showScreen('prompting-other');
+          document.getElementById('prompting-other-msg').textContent =
+            `${prompterName} is picking a topic...`;
+        } else {
+          showScreen('waiting');
+          document.getElementById('waiting-msg').textContent = 'Waiting to start...';
+        }
+      } else if (phase === 'answering') {
+        document.getElementById('answering-prompt').textContent = currentPrompt;
+        showScreen('answering');
+      } else if (phase === 'voting') {
+        showScreen('waiting');
+        document.getElementById('waiting-msg').textContent = 'Voting in progress...';
+      } else if (phase === 'results') {
+        showScreen('results');
+      } else if (phase === 'summary') {
+        showScreen('summary');
+      }
+    });
+
+    // ── Prompting phase ───────────────────────────────────────────────────────
+
+    socket.on('phase_prompting', ({ prompterId, prompterName }) => {
+      clearInterval(timerInterval);
+      document.getElementById('error-msg').textContent = '';
+      amPrompter = (prompterId === socket.id);
+      if (amPrompter) {
+        document.getElementById('seed-input').value = '';
+        document.getElementById('seed-submit-btn').disabled = false;
+        document.getElementById('seed-submit-btn').textContent = 'Generate Prompt';
+        showScreen('prompting-own');
+      } else {
+        document.getElementById('prompting-other-msg').textContent =
+          `${prompterName} is picking a topic...`;
+        showScreen('prompting-other');
+      }
+    });
+
+    socket.on('prompt_loading', () => {
+      if (amPrompter) {
+        document.getElementById('seed-submit-btn').disabled = true;
+        document.getElementById('seed-submit-btn').textContent = 'Generating...';
+      } else {
+        document.getElementById('prompting-other-msg').textContent = 'AI is generating the prompt...';
+      }
+    });
+
+    socket.on('prompt_error', ({ error }) => {
+      if (amPrompter) {
+        document.getElementById('error-msg').textContent = error;
+        document.getElementById('seed-submit-btn').disabled = false;
+        document.getElementById('seed-submit-btn').textContent = 'Generate Prompt';
+        showScreen('prompting-own');
+      }
+    });
+
+    document.getElementById('seed-submit-btn').onclick = () => {
+      const seed = document.getElementById('seed-input').value.trim();
+      if (!seed) return;
+      socket.emit('submit_seed', { seed });
     };
+
+    // ── Answering phase ───────────────────────────────────────────────────────
+
+    socket.on('phase_answering', ({ prompt, timeLimit }) => {
+      document.getElementById('answering-prompt').textContent = prompt;
+      document.getElementById('answer-input').value = '';
+      document.getElementById('answer-input-area').style.display = 'block';
+      document.getElementById('answer-submit-btn').disabled = false;
+      document.getElementById('answer-submitted-msg').style.display = 'none';
+      showScreen('answering');
+      startCountdown(timeLimit, 'answering-timer');
+    });
+
+    document.getElementById('answer-submit-btn').onclick = () => {
+      const text = document.getElementById('answer-input').value.trim();
+      if (!text) return;
+      socket.emit('submit_answer', { text });
+      document.getElementById('answer-input-area').style.display = 'none';
+      document.getElementById('answer-submitted-msg').style.display = 'block';
+    };
+
+    // ── Voting phase ──────────────────────────────────────────────────────────
+
+    socket.on('phase_voting', ({ answers, timeLimit, prompt }) => {
+      document.getElementById('voting-prompt-text').textContent = prompt;
+      document.getElementById('vote-submit-btn').style.display = 'block';
+      document.getElementById('vote-submitted-msg').style.display = 'none';
+
+      const container = document.getElementById('voting-answers');
+      container.innerHTML = '';
+      answers.forEach((a, i) => {
+        const div = document.createElement('div');
+        div.className = 'answer-option';
+        div.innerHTML = `
+          <input type="radio" name="vote" id="vote-opt-${i}" value="${a.answerId}">
+          <label for="vote-opt-${i}" class="answer-option-text">
+            ${a.text}${a.isAI ? ' <span class="ai-note">(AI)</span>' : ''}
+          </label>
+        `;
+        div.onclick = () => {
+          document.querySelectorAll('.answer-option').forEach(el => el.classList.remove('selected'));
+          div.classList.add('selected');
+          div.querySelector('input[type="radio"]').checked = true;
+        };
+        container.appendChild(div);
+      });
+
+      showScreen('voting');
+      startCountdown(timeLimit, 'voting-timer');
+    });
+
+    document.getElementById('vote-submit-btn').onclick = () => {
+      const selected = document.querySelector('input[name="vote"]:checked');
+      if (!selected) return;
+      socket.emit('submit_vote', { answerId: selected.value });
+      document.getElementById('vote-submit-btn').style.display = 'none';
+      document.getElementById('vote-submitted-msg').style.display = 'block';
+    };
+
+    // ── Results / Summary ─────────────────────────────────────────────────────
+
+    socket.on('phase_results', () => {
+      clearInterval(timerInterval);
+      showScreen('results');
+    });
+
+    socket.on('phase_summary', () => {
+      clearInterval(timerInterval);
+      showScreen('summary');
+    });
+
+    // ── Reset ─────────────────────────────────────────────────────────────────
+
+    socket.on('reset', () => {
+      myName = '';
+      clearInterval(timerInterval);
+      document.getElementById('name-input').value = '';
+      document.getElementById('join-btn').disabled = false;
+      showScreen('join');
+    });
   </script>
 </body>
 </html>

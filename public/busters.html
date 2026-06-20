@@ -2,113 +2,340 @@
 <html>
 <head>
   <title>Busters Host</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-    #qr { margin: 20px; }
-    #players { margin: 20px; }
-    .player { margin: 5px; padding: 5px; border-radius: 5px; }
-    #messages { margin-top: 20px; text-align: left; max-width: 600px; margin-left: auto; margin-right: auto; }
-    .message { margin: 5px 0; }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; margin: 0; background: #1a1a2e; color: #eee; }
+    .container { max-width: 960px; margin: 0 auto; padding: 20px; }
+    h1 { text-align: center; color: #e94560; margin: 0 0 20px; font-size: 36px; }
+
+    .card { background: #16213e; border-radius: 10px; padding: 20px; margin: 14px 0; }
+
+    .top-row { display: flex; gap: 16px; }
+    .qr-card { flex: 0 0 auto; text-align: center; }
+    #qrcode { display: inline-block; background: white; padding: 8px; border-radius: 6px; }
+    .players-card { flex: 1; }
+    .player-chip {
+      display: inline-block; padding: 6px 14px; margin: 4px;
+      border-radius: 20px; font-weight: bold; font-size: 14px; color: #fff;
+    }
+
+    .phase { display: none; }
+    .phase.active { display: block; }
+
+    .prompt-box {
+      background: #0f3460; border-radius: 10px; padding: 24px;
+      font-size: 28px; font-weight: bold; text-align: center;
+      color: #fff; margin: 12px 0; line-height: 1.3;
+    }
+
+    .timer { font-size: 52px; font-weight: bold; text-align: center; color: #e94560; margin: 8px 0; }
+
+    .status-msg { text-align: center; color: #aaa; font-size: 20px; margin: 20px 0; }
+
+    .checklist { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .check-item {
+      padding: 8px 16px; border-radius: 20px; font-size: 16px;
+      background: #0f3460; display: flex; align-items: center; gap: 8px;
+    }
+    .check-item.done { background: #1a5e3a; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+    th { background: #0f3460; padding: 12px 16px; text-align: left; }
+    td { padding: 12px 16px; border-bottom: 1px solid #0f3460; }
+    tr.winner td { font-weight: bold; background: #1a5e3a; }
+    .ai-tag { font-size: 11px; color: #aaa; margin-left: 6px; }
+    .author { font-size: 12px; margin-left: 8px; }
+
+    .summary-round { margin-bottom: 28px; }
+    .summary-round h3 { color: #e94560; margin: 0 0 8px; }
+
+    button.primary {
+      background: #e94560; color: white; border: none;
+      padding: 14px 32px; font-size: 18px; border-radius: 8px;
+      cursor: pointer; display: block; margin: 20px auto;
+    }
+    button.primary:hover { background: #c73652; }
+
+    #error-msg { color: #e94560; text-align: center; font-size: 16px; min-height: 22px; }
   </style>
 </head>
 <body>
-  <h1>Busters Game Host</h1>
-  <div id="qr"></div>
-  <h2>Players:</h2>
-  <div id="players"></div>
-  
-  <div id="pre-game">
-    <input type="text" id="seed" placeholder="Enter seed (e.g., Pirate, best buy, bathroom)" />
-    <button id="start">Start Game</button>
-  </div>
-  
-  <div id="post-game" style="display: none;">
-    <div id="prompt-display" style="background-color: #f0f0f0; padding: 20px; margin: 20px; border-radius: 5px;">
-      <h3>Current Prompt:</h3>
-      <p id="current-prompt" style="font-size: 18px; font-weight: bold;"></p>
+<div class="container">
+  <h1>Busters</h1>
+
+  <div class="top-row">
+    <div class="card qr-card">
+      <p style="margin:0 0 8px;font-size:13px;color:#aaa">Scan to join</p>
+      <div id="qrcode"></div>
+    </div>
+    <div class="card players-card">
+      <h3 style="margin-top:0">Players</h3>
+      <div id="player-list"><span style="color:#aaa">No players yet</span></div>
     </div>
   </div>
-  
-  <h2>Player Responses:</h2>
-  <div id="messages"></div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script>
-    const socket = io();
-    const playersDiv = document.getElementById('players');
-    const messagesDiv = document.getElementById('messages');
-    const players = {};
+  <div id="error-msg"></div>
 
-    // Generate QR code
-    const qr = new QRCode(document.getElementById('qr'), {
-      text: `${window.location.origin}/busters-phone.html`,
-      width: 256,
-      height: 256
-    });
+  <!-- LOBBY -->
+  <div id="phase-lobby" class="card phase active">
+    <p class="status-msg">Waiting for players to join.<br>The first player to join will start the game.</p>
+  </div>
 
-    socket.on('player_joined', (data) => {
-      const { id, name, color } = data;
-      players[id] = { name, color };
-      updatePlayers();
-    });
+  <!-- PROMPTING -->
+  <div id="phase-prompting" class="card phase">
+    <p class="status-msg" id="prompting-msg">Waiting for prompt...</p>
+  </div>
 
-    socket.on('player_left', (data) => {
-      delete players[data.id];
-      updatePlayers();
-    });
+  <!-- ANSWERING -->
+  <div id="phase-answering" class="card phase">
+    <div class="prompt-box" id="answer-prompt"></div>
+    <div class="timer" id="answer-timer"></div>
+    <h3>Who's answered</h3>
+    <div class="checklist" id="answer-checklist"></div>
+  </div>
 
-    socket.on('player_response', (data) => {
-      const { id, text } = data;
-      const player = players[id];
-      const msgDiv = document.createElement('div');
-      msgDiv.className = 'message';
-      msgDiv.style.color = player ? player.color : '#333';
-      msgDiv.style.padding = '10px';
-      msgDiv.style.marginBottom = '10px';
-      msgDiv.style.backgroundColor = '#f9f9f9';
-      msgDiv.innerHTML = `<strong>${player ? player.name : 'Player'}:</strong> ${text}`;
-      messagesDiv.appendChild(msgDiv);
-    });
+  <!-- VOTING -->
+  <div id="phase-voting" class="card phase">
+    <div class="prompt-box" id="voting-prompt"></div>
+    <p class="status-msg">Players are voting...</p>
+    <div class="timer" id="voting-timer"></div>
+    <h3>Who's voted</h3>
+    <div class="checklist" id="voting-checklist"></div>
+  </div>
 
-function updatePlayers() {
-      playersDiv.innerHTML = '';
-      for (const id in players) {
-        const player = players[id];
-        const div = document.createElement('div');
-        div.className = 'player';
-        div.style.backgroundColor = player.color;
-        div.textContent = player.name;
-        playersDiv.appendChild(div);
-      }
+  <!-- RESULTS -->
+  <div id="phase-results" class="card phase">
+    <div class="prompt-box" id="results-prompt"></div>
+    <table>
+      <thead><tr><th>Answer</th><th style="width:80px;text-align:center">Votes</th></tr></thead>
+      <tbody id="results-tbody"></tbody>
+    </table>
+    <button class="primary" id="next-round-btn">Next Round →</button>
+  </div>
+
+  <!-- SUMMARY -->
+  <div id="phase-summary" class="card phase">
+    <h2 style="text-align:center;color:#e94560;margin-top:0">Game Over!</h2>
+    <div id="summary-content"></div>
+    <button class="primary" id="play-again-btn">Play Again</button>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+  const socket = io('/busters');
+  let players = {};
+  let timerInterval = null;
+  let answeredSet = new Set();
+  let votedSet = new Set();
+
+  new QRCode(document.getElementById('qrcode'), {
+    text: `${window.location.origin}/busters-phone.html`,
+    width: 160, height: 160
+  });
+
+  // ── Helpers ────────────────────────────────────────────────────────────────
+
+  function showPhase(name) {
+    document.querySelectorAll('.phase').forEach(el => el.classList.remove('active'));
+    const el = document.getElementById('phase-' + name);
+    if (el) el.classList.add('active');
+  }
+
+  function startCountdown(secs, elId) {
+    clearInterval(timerInterval);
+    let remaining = secs;
+    const el = document.getElementById(elId);
+    const tick = () => { if (el) el.textContent = remaining + 's'; };
+    tick();
+    timerInterval = setInterval(() => {
+      remaining--;
+      if (remaining <= 0) { clearInterval(timerInterval); if (el) el.textContent = ''; }
+      else tick();
+    }, 1000);
+  }
+
+  function updatePlayerList() {
+    const div = document.getElementById('player-list');
+    const entries = Object.values(players);
+    div.innerHTML = entries.length
+      ? entries.map(p => `<span class="player-chip" style="background:${p.color}">${p.name}</span>`).join('')
+      : '<span style="color:#aaa">No players yet</span>';
+  }
+
+  function buildChecklist(containerId, doneSet) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    for (const [id, p] of Object.entries(players)) {
+      const done = doneSet.has(id);
+      const div = document.createElement('div');
+      div.className = 'check-item' + (done ? ' done' : '');
+      div.id = 'check-' + containerId + '-' + id;
+      div.innerHTML = `<span>${done ? '✓' : '○'}</span> ${p.name}`;
+      container.appendChild(div);
     }
+  }
 
-    document.getElementById('start').onclick = () => {
-      const seed = document.getElementById('seed').value.trim();
-      if (!seed) {
-        alert('Please enter a seed');
-        return;
-      }
-      socket.emit('start_game', { game: 'busters', seed });
-      document.getElementById('pre-game').style.display = 'none';
-      document.getElementById('post-game').style.display = 'block';
-      document.getElementById('current-prompt').textContent = 'Generating prompt...';
-    };
-    
-    socket.on('prompt_loading', () => {
-      document.getElementById('current-prompt').textContent = 'Generating prompt...';
+  function markChecked(containerId, id) {
+    const el = document.getElementById('check-' + containerId + '-' + id);
+    if (el) {
+      el.classList.add('done');
+      el.querySelector('span').textContent = '✓';
+    }
+  }
+
+  // ── Socket events ──────────────────────────────────────────────────────────
+
+  socket.on('game_state', ({ phase, players: ps, prompterName, currentPrompt, answeredIds }) => {
+    players = {};
+    ps.forEach(p => { players[p.id] = { name: p.name, color: p.color }; });
+    updatePlayerList();
+    answeredSet = new Set(answeredIds || []);
+
+    if (phase === 'lobby') showPhase('lobby');
+    else if (phase === 'prompting') {
+      showPhase('prompting');
+      document.getElementById('prompting-msg').textContent =
+        prompterName ? `${prompterName} is choosing a prompt...` : 'Waiting for prompt...';
+    } else if (phase === 'answering') {
+      document.getElementById('answer-prompt').textContent = currentPrompt;
+      showPhase('answering');
+      buildChecklist('answer-checklist', answeredSet);
+    } else if (phase === 'voting') {
+      showPhase('voting');
+      buildChecklist('voting-checklist', new Set());
+    }
+  });
+
+  socket.on('player_joined', ({ id, name, color }) => {
+    players[id] = { name, color };
+    updatePlayerList();
+    document.getElementById('error-msg').textContent = '';
+  });
+
+  socket.on('player_left', ({ id }) => {
+    delete players[id];
+    updatePlayerList();
+  });
+
+  socket.on('phase_prompting', ({ prompterName }) => {
+    clearInterval(timerInterval);
+    showPhase('prompting');
+    document.getElementById('prompting-msg').textContent = `${prompterName} is choosing a prompt...`;
+  });
+
+  socket.on('prompt_loading', () => {
+    document.getElementById('prompting-msg').textContent = 'Generating prompt with AI...';
+  });
+
+  socket.on('prompt_error', ({ error }) => {
+    document.getElementById('error-msg').textContent = error;
+  });
+
+  socket.on('phase_answering', ({ prompt, timeLimit }) => {
+    answeredSet = new Set();
+    document.getElementById('answer-prompt').textContent = prompt;
+    document.getElementById('voting-prompt').textContent = prompt;
+    showPhase('answering');
+    buildChecklist('answer-checklist', answeredSet);
+    startCountdown(timeLimit, 'answer-timer');
+  });
+
+  socket.on('player_answered', ({ id }) => {
+    answeredSet.add(id);
+    markChecked('answer-checklist', id);
+  });
+
+  socket.on('phase_voting_host', ({ timeLimit, prompt }) => {
+    votedSet = new Set();
+    document.getElementById('voting-prompt').textContent = prompt;
+    showPhase('voting');
+    buildChecklist('voting-checklist', votedSet);
+    startCountdown(timeLimit, 'voting-timer');
+  });
+
+  socket.on('player_voted', ({ id }) => {
+    votedSet.add(id);
+    markChecked('voting-checklist', id);
+  });
+
+  socket.on('phase_results', ({ prompt, results, winnerName, isLastRound }) => {
+    clearInterval(timerInterval);
+    showPhase('results');
+    document.getElementById('results-prompt').textContent = prompt;
+    document.getElementById('next-round-btn').textContent = isLastRound ? 'View Summary →' : 'Next Round →';
+
+    const tbody = document.getElementById('results-tbody');
+    tbody.innerHTML = '';
+    [...results].sort((a, b) => b.votes - a.votes).forEach(r => {
+      const tr = document.createElement('tr');
+      if (r.name === winnerName) tr.classList.add('winner');
+      tr.innerHTML = `
+        <td>
+          ${r.name === winnerName ? '🏆 ' : ''}${r.text}
+          ${r.isAI ? '<span class="ai-tag">(AI)</span>' : ''}
+          <span class="author" style="color:${r.color}">${r.name}</span>
+        </td>
+        <td style="text-align:center">${r.votes}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  });
+
+  socket.on('phase_summary', ({ rounds, totalVotes }) => {
+    clearInterval(timerInterval);
+    showPhase('summary');
+
+    const sorted = Object.entries(totalVotes).sort((a, b) => b[1] - a[1]);
+    const medals = ['🥇', '🥈', '🥉'];
+    let html = '<div class="card" style="margin-bottom:20px"><h3 style="margin-top:0">Total Votes</h3>';
+    sorted.forEach(([name, votes], i) => {
+      html += `<div class="check-item done" style="margin:6px 0">${medals[i] || ''} ${name} — ${votes} vote${votes !== 1 ? 's' : ''}</div>`;
+    });
+    html += '</div>';
+
+    rounds.forEach(round => {
+      html += `
+        <div class="summary-round">
+          <h3>Round ${round.round} — <em>${round.prompter}</em> prompted</h3>
+          <div class="prompt-box" style="font-size:20px;padding:16px;margin:8px 0">${round.prompt}</div>
+          <table>
+            <tbody>
+              ${[...round.results].sort((a, b) => b.votes - a.votes).map(r => `
+                <tr class="${r.name === round.winnerName ? 'winner' : ''}">
+                  <td>
+                    ${r.name === round.winnerName ? '🏆 ' : ''}${r.text}
+                    ${r.isAI ? '<span class="ai-tag">(AI)</span>' : ''}
+                    <span class="author" style="color:${r.color}">${r.name}</span>
+                  </td>
+                  <td style="text-align:center;width:80px">${r.votes}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
     });
 
-    socket.on('prompt_generated', (data) => {
-      document.getElementById('current-prompt').style.color = 'black';
-      document.getElementById('current-prompt').textContent = data.prompt;
-    });
+    document.getElementById('summary-content').innerHTML = html;
+  });
 
-    socket.on('prompt_error', (data) => {
-      document.getElementById('current-prompt').style.color = 'red';
-      document.getElementById('current-prompt').textContent = `Error: ${data.error}`;
-      console.error('Prompt generation error event:', data.error);
-    });
-  </script>
+  socket.on('reset', () => {
+    players = {};
+    answeredSet = new Set();
+    votedSet = new Set();
+    clearInterval(timerInterval);
+    updatePlayerList();
+    showPhase('lobby');
+    document.getElementById('error-msg').textContent = '';
+  });
+
+  // ── Buttons ────────────────────────────────────────────────────────────────
+
+  document.getElementById('next-round-btn').onclick = () => socket.emit('next_round');
+  document.getElementById('play-again-btn').onclick = () => socket.emit('reset');
+</script>
 </body>
 </html>
