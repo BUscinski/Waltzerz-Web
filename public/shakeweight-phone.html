@@ -4,35 +4,71 @@
   <title>Shake Weight Phone</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f5f5f5; }
-    input, button { font-size: 18px; margin: 10px; padding: 10px; }
-    #join-area { display: block; }
-    #calibrating-area { display: none; }
-    #game-area { display: none; text-align: center; }
-    #shake-screen { font-size: 48px; font-weight: bold; color: #ff6600; margin: 40px 0; }
-    #jerk-score { font-size: 36px; font-weight: bold; color: #333; margin: 30px 0; }
-    #status { font-size: 18px; color: #666; margin-top: 20px; }
-    .calib-bar-wrap { width: 80%; margin: 20px auto; background: #ddd; border-radius: 8px; height: 18px; }
-    .calib-bar { height: 18px; border-radius: 8px; background: #ff6600; width: 0%; transition: width 0.1s; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: Arial, sans-serif; margin: 0; padding: 0;
+      background: #1a1a2e; color: #eee; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    h1 { color: #e94560; font-size: 32px; margin: 28px 0 20px; }
+
+    .card {
+      background: #16213e; border-radius: 12px; padding: 24px;
+      width: 100%; max-width: 440px; margin-bottom: 16px;
+      text-align: center;
+    }
+
+    input[type="text"] {
+      width: 100%; padding: 14px; font-size: 18px;
+      border: 2px solid #0f3460; border-radius: 8px;
+      background: #0f3460; color: #eee; outline: none; margin-bottom: 12px;
+    }
+    input[type="text"]:focus { border-color: #e94560; }
+
+    button.primary {
+      width: 100%; padding: 16px; font-size: 20px; font-weight: bold;
+      background: #e94560; color: white; border: none;
+      border-radius: 8px; cursor: pointer;
+    }
+    button.primary:disabled { background: #555; cursor: not-allowed; }
+
+    #join-area { width: 100%; max-width: 440px; padding: 0 24px; }
+    #calibrating-area { width: 100%; max-width: 440px; padding: 0 24px; display: none; text-align: center; }
+    #game-area { display: none; width: 100%; max-width: 440px; padding: 0 24px; text-align: center; }
+
+    .calib-bar-wrap {
+      width: 100%; background: #0f3460; border-radius: 8px;
+      height: 16px; margin: 16px 0;
+    }
+    .calib-bar { height: 16px; border-radius: 8px; background: #e94560; width: 0%; transition: width 0.1s; }
+
+    #countdown-display { font-size: 80px; font-weight: bold; color: #e94560; margin: 20px 0; }
+    #shake-screen { font-size: 52px; font-weight: bold; color: #eee; margin: 20px 0; }
+    #jerk-score { font-size: 32px; font-weight: bold; color: #e94560; margin: 16px 0; }
+    #status { font-size: 18px; color: #aaa; margin-top: 16px; }
   </style>
 </head>
 <body>
-  <h1>Shake Weight Phone</h1>
+  <h1>Shake Weight</h1>
 
   <div id="join-area">
-    <input type="text" id="name" placeholder="Enter your name" />
-    <button id="join">Join Game</button>
+    <div class="card">
+      <input type="text" id="name" placeholder="Your name" maxlength="20" />
+      <button class="primary" id="join">Join Game</button>
+    </div>
   </div>
 
   <div id="calibrating-area">
-    <p style="font-size:22px; font-weight:bold;">Hold still...</p>
-    <p style="color:#666">Calibrating your phone's sensors</p>
-    <div class="calib-bar-wrap"><div class="calib-bar" id="calib-bar"></div></div>
-    <p id="calib-countdown" style="font-size:18px;color:#999"></p>
+    <div class="card">
+      <p style="font-size:22px;font-weight:bold;margin:0 0 8px">Hold still...</p>
+      <p style="color:#aaa;margin:0 0 16px">Calibrating your phone's sensors</p>
+      <div class="calib-bar-wrap"><div class="calib-bar" id="calib-bar"></div></div>
+      <p id="calib-countdown" style="color:#aaa;font-size:16px;margin:8px 0 0"></p>
+    </div>
   </div>
 
   <div id="game-area">
-    <div id="countdown-display" style="font-size: 60px; font-weight: bold; margin: 40px 0; color: #ff6600;"></div>
+    <div id="countdown-display"></div>
     <div id="shake-screen">🎯 SHAKE! 🎯</div>
     <div id="jerk-score">Score: <span id="current-jerk">0</span></div>
     <div id="status"></div>
@@ -45,30 +81,24 @@
     let currentJerkScore = 0;
     let sendInterval = null;
 
-    // Calibration state
     const CALIB_DURATION_MS = 2500;
-    let calibSamples = [];   // raw jerk magnitudes collected during calibration
+    let calibSamples = [];
     let calibMean = 0;
-    let calibStddev = 1;     // safe fallback
+    let calibStddev = 1;
     let calibrated = false;
     let calibrating = false;
 
-    // Smoothing history
     const FRAME_HISTORY = 20;
-    let accelXHistory = [];
-    let accelYHistory = [];
-    let accelZHistory = [];
-    let prevSmoothed = null; // { x, y, z }
+    let accelXHistory = [], accelYHistory = [], accelZHistory = [];
+    let prevSmoothed = null;
 
     function average(arr) {
-      if (arr.length === 0) return 0;
-      return arr.reduce((a, b) => a + b, 0) / arr.length;
+      return arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length;
     }
 
     function stddev(arr, mean) {
       if (arr.length < 2) return 1;
-      const variance = arr.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / arr.length;
-      return Math.sqrt(variance) || 1; // never return 0
+      return Math.sqrt(arr.reduce((s, v) => s + Math.pow(v - mean, 2), 0) / arr.length) || 1;
     }
 
     function maintainHistory(arr, value) {
@@ -85,36 +115,28 @@
       );
     }
 
-    // ── Calibration ────────────────────────────────────────────────────────────
-
     function startCalibration(onDone) {
       calibrating = true;
       calibSamples = [];
       const startTime = Date.now();
-
       document.getElementById('join-area').style.display = 'none';
       document.getElementById('calibrating-area').style.display = 'block';
 
       const barEl = document.getElementById('calib-bar');
       const countEl = document.getElementById('calib-countdown');
 
-      // Progress bar driven by the same devicemotion listener below
       const progressInterval = setInterval(() => {
         const elapsed = Date.now() - startTime;
-        const pct = Math.min((elapsed / CALIB_DURATION_MS) * 100, 100);
-        barEl.style.width = pct + '%';
+        barEl.style.width = Math.min((elapsed / CALIB_DURATION_MS) * 100, 100) + '%';
         const remaining = Math.ceil((CALIB_DURATION_MS - elapsed) / 1000);
         countEl.textContent = remaining > 0 ? remaining + 's' : '';
 
         if (elapsed >= CALIB_DURATION_MS) {
           clearInterval(progressInterval);
           calibrating = false;
-
           calibMean = average(calibSamples);
           calibStddev = stddev(calibSamples, calibMean);
-
-          console.log(`Calibration done — mean: ${calibMean.toFixed(4)}, stddev: ${calibStddev.toFixed(4)}, samples: ${calibSamples.length}`);
-
+          console.log(`Calibrated — mean: ${calibMean.toFixed(4)}, stddev: ${calibStddev.toFixed(4)}`);
           document.getElementById('calibrating-area').style.display = 'none';
           calibrated = true;
           onDone();
@@ -122,15 +144,12 @@
       }, 100);
     }
 
-    // ── Sensor handler (shared by calibration + game) ──────────────────────────
-
     function onMotion(event) {
       const raw = {
         x: event.acceleration.x || 0,
         y: event.acceleration.y || 0,
         z: event.acceleration.z || 0,
       };
-
       maintainHistory(accelXHistory, raw.x);
       maintainHistory(accelYHistory, raw.y);
       maintainHistory(accelZHistory, raw.z);
@@ -140,45 +159,32 @@
         y: average(accelYHistory),
         z: average(accelZHistory),
       };
-
       const jerkMag = computeJerkMag(smoothed);
       prevSmoothed = smoothed;
 
-      if (calibrating) {
-        calibSamples.push(jerkMag);
-        return;
-      }
+      if (calibrating) { calibSamples.push(jerkMag); return; }
 
       if (gameActive && calibrated) {
-        // z-score: how many std devs above the player's own baseline?
         const z = (jerkMag - calibMean) / calibStddev;
         if (z > 0) currentJerkScore += z;
         document.getElementById('current-jerk').textContent = Math.floor(currentJerkScore);
       }
     }
 
-    // ── Join flow ──────────────────────────────────────────────────────────────
-
     document.getElementById('join').onclick = async () => {
       const name = document.getElementById('name').value.trim();
       if (!name) return;
-
       document.getElementById('join').disabled = true;
-
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         await DeviceMotionEvent.requestPermission();
       }
-
       window.addEventListener('devicemotion', onMotion);
-
       startCalibration(() => {
         socket.emit('join', { name });
         document.getElementById('game-area').style.display = 'block';
         document.getElementById('status').textContent = 'Waiting for the game to start...';
       });
     };
-
-    // ── Game events ────────────────────────────────────────────────────────────
 
     socket.on('game_started', () => {
       gameActive = true;
@@ -191,8 +197,7 @@
     });
 
     socket.on('countdown', ({ time }) => {
-      const el = document.getElementById('countdown-display');
-      el.textContent = time > 0 ? time : 'GO!';
+      document.getElementById('countdown-display').textContent = time > 0 ? time : 'GO!';
     });
 
     socket.on('game_ended', () => {
@@ -205,16 +210,16 @@
     socket.on('reset_game', () => {
       gameActive = false;
       currentJerkScore = 0;
+      calibrated = false;
+      calibSamples = [];
+      prevSmoothed = null;
+      accelXHistory = []; accelYHistory = []; accelZHistory = [];
       document.getElementById('countdown-display').textContent = '';
       document.getElementById('shake-screen').style.display = 'block';
       document.getElementById('game-area').style.display = 'none';
       document.getElementById('join-area').style.display = 'block';
       document.getElementById('join').disabled = false;
       document.getElementById('status').textContent = '';
-      calibrated = false;
-      calibSamples = [];
-      prevSmoothed = null;
-      accelXHistory = []; accelYHistory = []; accelZHistory = [];
       if (sendInterval) clearInterval(sendInterval);
       window.removeEventListener('devicemotion', onMotion);
     });

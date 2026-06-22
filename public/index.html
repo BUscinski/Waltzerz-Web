@@ -3,39 +3,51 @@
 <head>
   <title>Phone Game Platform</title>
   <style>
+    * { box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      margin: 50px;
+      margin: 0;
+      padding: 40px 20px;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
     }
-    .game-button {
-      display: inline-block;
-      padding: 20px 40px;
-      margin: 20px;
-      font-size: 24px;
-      background-color: #4CAF50;
-      color: white;
-      text-decoration: none;
-      border-radius: 10px;
-      border: none;
+    h1 { color: #e94560; font-size: 40px; margin-bottom: 8px; }
+    p { color: #aaa; font-size: 18px; margin-bottom: 40px; }
+    .games { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+    .game-card {
+      background: #16213e;
+      border-radius: 12px;
+      padding: 32px 48px;
       cursor: pointer;
+      border: 2px solid transparent;
+      transition: border-color 0.15s;
+      text-decoration: none;
+      display: block;
+      color: #eee;
     }
-    .game-button:hover {
-      background-color: #45a049;
-    }
-    .game-button.shake {
-      background-color: #ff6600;
-    }
-    .game-button.shake:hover {
-      background-color: #e55a00;
-    }
+    .game-card:hover { border-color: #e94560; }
+    .game-card h2 { margin: 0 0 8px; font-size: 26px; color: #fff; }
+    .game-card p { margin: 0; font-size: 15px; color: #aaa; }
   </style>
 </head>
 <body>
-  <h1>Welcome to Phone Game Platform</h1>
+  <h1>Phone Game Platform</h1>
   <p>Choose a game to play:</p>
-  <button class="game-button" onclick="window.location.href='waltzers.html'">Waltzers</button>
-  <button class="game-button" onclick="window.location.href='busters.html'">Busters</button>
-  <button class="game-button shake" onclick="window.location.href='shakeweight.html'">Shake Weight</button>
+  <div class="games">
+    <a class="game-card" href="waltzers.html">
+      <h2>Waltzers</h2>
+      <p>Motion-based elimination</p>
+    </a>
+    <a class="game-card" href="busters.html">
+      <h2>Busters</h2>
+      <p>AI-powered party prompts</p>
+    </a>
+    <a class="game-card" href="shakeweight.html">
+      <h2>Shake Weight</h2>
+      <p>Shake your phone to win</p>
+    </a>
+  </div>
 </body>
 </html>

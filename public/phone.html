@@ -1,116 +1,116 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Phone Controller</title>
+  <title>Waltzers Controller</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: Arial, sans-serif;
-      font-size: 24px;
-      text-align: center;
-      margin: 20px;
+      font-family: Arial, sans-serif; margin: 0; padding: 24px;
+      background: #1a1a2e; color: #eee; min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
     }
-    #data-display {
-      margin-top: 20px;
+    h1 { color: #e94560; font-size: 32px; margin: 0 0 24px; }
+
+    .card {
+      background: #16213e; border-radius: 12px; padding: 20px;
+      width: 100%; max-width: 440px; margin-bottom: 16px;
+    }
+
+    input[type="text"] {
+      width: 100%; padding: 14px; font-size: 18px;
+      border: 2px solid #0f3460; border-radius: 8px;
+      background: #0f3460; color: #eee; outline: none; margin-bottom: 12px;
+    }
+    input[type="text"]:focus { border-color: #e94560; }
+
+    button.primary {
+      width: 100%; padding: 16px; font-size: 20px; font-weight: bold;
+      background: #e94560; color: white; border: none;
+      border-radius: 8px; cursor: pointer;
+    }
+
+    .data-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px;
     }
     .data-item {
-      margin: 10px 0;
-      font-size: 32px;
-      font-weight: bold;
+      background: #0f3460; border-radius: 8px; padding: 12px;
+      text-align: center;
+    }
+    .data-label { font-size: 12px; color: #aaa; margin-bottom: 4px; }
+    .data-value { font-size: 22px; font-weight: bold; color: #e94560; }
+
+    #jerk-status {
+      width: 100%; max-width: 440px;
+      font-size: 20px; font-weight: bold; color: #e94560;
+      text-align: center; min-height: 28px; margin-top: 8px;
     }
   </style>
 </head>
 <body>
-  <input type="text" id="name" placeholder="Enter your name" />
-  <button id="join">Join</button>
+  <h1>Waltzers</h1>
 
-  <div id="data-display">
-    <p class="data-item">X: <span id="x">--</span></p>
-    <p class="data-item">Y: <span id="y">--</span></p>
-    <p class="data-item">Z: <span id="z">--</span></p>
-    <p class="data-item">Pitch: <span id="pitch">--</span></p>
-    <p class="data-item">Roll: <span id="roll">--</span></p>
-    <p class="data-item">Yaw: <span id="yaw">--</span></p>
-    <p id="jerk-status" style="color: red; font-size: 28px; margin-top: 20px;"></p>
+  <div class="card">
+    <input type="text" id="name" placeholder="Your name" />
+    <button class="primary" id="join">Join Game</button>
   </div>
+
+  <div class="card">
+    <div class="data-grid">
+      <div class="data-item"><div class="data-label">Jerk X</div><div class="data-value" id="x">--</div></div>
+      <div class="data-item"><div class="data-label">Jerk Y</div><div class="data-value" id="y">--</div></div>
+      <div class="data-item"><div class="data-label">Jerk Z</div><div class="data-value" id="z">--</div></div>
+      <div class="data-item"><div class="data-label">Pitch</div><div class="data-value" id="pitch">--</div></div>
+      <div class="data-item"><div class="data-label">Roll</div><div class="data-value" id="roll">--</div></div>
+      <div class="data-item"><div class="data-label">Yaw</div><div class="data-value" id="yaw">--</div></div>
+    </div>
+  </div>
+
+  <div id="jerk-status"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io('/waltzers');
 
-    socket.on("connect", () => {
-      console.log("Connected to server");
+    socket.on('update_thresholds', ({ accel, rot }) => {
+      ACCEL_JERK_THRESHOLD = accel;
+      ROT_JERK_THRESHOLD = rot;
     });
 
-    socket.on("disconnect", () => {
-      console.log("Disconnected from server");
-    });
-
-    socket.on("update_thresholds", (data) => {
-      ACCEL_JERK_THRESHOLD = data.accel;
-      ROT_JERK_THRESHOLD = data.rot;
-      console.log("Thresholds updated:", ACCEL_JERK_THRESHOLD, ROT_JERK_THRESHOLD);
-    });
-
-    socket.on("reset", () => {
+    socket.on('reset', () => {
       document.getElementById('jerk-status').textContent = '';
       clearTimeout(jerkTimeout);
       isJerkDetected = false;
     });
 
-    const FRAME_HISTORY = 10; // Number of past frames to keep for smoothing
+    const FRAME_HISTORY = 10;
+    let accelXHistory = [], accelYHistory = [], accelZHistory = [];
+    let pitchHistory = [], rollHistory = [], yawHistory = [];
 
-    // Arrays to store historical data
-    let accelXHistory = [];
-    let accelYHistory = [];
-    let accelZHistory = [];
-    let pitchHistory = [];
-    let rollHistory = [];
-    let yawHistory = [];
-
-    // Function to calculate average of an array
     function average(arr) {
-      if (arr.length === 0) return 0;
-      return arr.reduce((a, b) => a + b, 0) / arr.length;
+      return arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length;
     }
-
-    // Function to maintain array length
     function maintainHistory(arr, value) {
       arr.push(value);
-      if (arr.length > FRAME_HISTORY) {
-        arr.shift();
-      }
+      if (arr.length > FRAME_HISTORY) arr.shift();
     }
 
-    // Variables for jerk detection
-    let prevTime = null;
-    let prevSmoothed = null;
-    let jerkTimeout;
-    let isJerkDetected = false; // Flag to prevent spamming jerk events
+    let prevTime = null, prevSmoothed = null;
+    let jerkTimeout, isJerkDetected = false;
+    let ACCEL_JERK_THRESHOLD = 50;
+    let ROT_JERK_THRESHOLD = 500;
 
-    // Jerk detection thresholds (adjust based on phone calibration)
-    let ACCEL_JERK_THRESHOLD = 50; // m/s³ per second
-    let ROT_JERK_THRESHOLD = 500; // degrees/s² per second
+    document.getElementById('join').onclick = async () => {
+      const name = document.getElementById('name').value.trim();
+      if (!name) return;
+      socket.emit('join', { name });
 
-    document.getElementById("join").onclick = async () => {
-      console.log("Join button clicked");
-      const name = document.getElementById("name").value.trim();
-      if (!name) {
-        alert("Please enter your name");
-        return;
-      }
-      console.log("Emitting join for", name);
-      socket.emit("join", { name });
-
-      if (typeof DeviceMotionEvent.requestPermission === "function") {
-        console.log("Requesting permission");
+      if (typeof DeviceMotionEvent.requestPermission === 'function') {
         await DeviceMotionEvent.requestPermission();
       }
 
-      console.log("Adding devicemotion listener");
-      window.addEventListener("devicemotion", (event) => {
-        console.log("Device motion event:", event.acceleration);
-        const rawData = {
+      window.addEventListener('devicemotion', (event) => {
+        const raw = {
           x: event.acceleration.x || 0,
           y: event.acceleration.y || 0,
           z: event.acceleration.z || 0,
@@ -119,80 +119,64 @@
           yaw: event.rotationRate.gamma || 0,
         };
 
-        // Add to history
-        maintainHistory(accelXHistory, rawData.x);
-        maintainHistory(accelYHistory, rawData.y);
-        maintainHistory(accelZHistory, rawData.z);
-        maintainHistory(pitchHistory, rawData.pitch);
-        maintainHistory(rollHistory, rawData.roll);
-        maintainHistory(yawHistory, rawData.yaw);
+        maintainHistory(accelXHistory, raw.x);
+        maintainHistory(accelYHistory, raw.y);
+        maintainHistory(accelZHistory, raw.z);
+        maintainHistory(pitchHistory, raw.pitch);
+        maintainHistory(rollHistory, raw.roll);
+        maintainHistory(yawHistory, raw.yaw);
 
-        // Compute smoothed data
-        const smoothedData = {
-          x: average(accelXHistory),
-          y: average(accelYHistory),
-          z: average(accelZHistory),
-          pitch: average(pitchHistory),
-          roll: average(rollHistory),
-          yaw: average(yawHistory),
+        const smoothed = {
+          x: average(accelXHistory), y: average(accelYHistory), z: average(accelZHistory),
+          pitch: average(pitchHistory), roll: average(rollHistory), yaw: average(yawHistory),
         };
 
-        // Jerk detection
         const currentTime = event.timeStamp;
         if (prevTime !== null && prevSmoothed !== null) {
-          const deltaTime = (currentTime - prevTime) / 1000; // seconds
-          if (deltaTime > 0) {
-            // Accelerometer jerk (magnitude of jerk vector)
-            const jerkAccelX = (smoothedData.x - prevSmoothed.x) / deltaTime;
-            const jerkAccelY = (smoothedData.y - prevSmoothed.y) / deltaTime;
-            const jerkAccelZ = (smoothedData.z - prevSmoothed.z) / deltaTime;
-            const jerkAccelMagnitude = Math.sqrt(jerkAccelX**2 + jerkAccelY**2 + jerkAccelZ**2);
+          const dt = (currentTime - prevTime) / 1000;
+          if (dt > 0) {
+            const jx = (smoothed.x - prevSmoothed.x) / dt;
+            const jy = (smoothed.y - prevSmoothed.y) / dt;
+            const jz = (smoothed.z - prevSmoothed.z) / dt;
+            const jAccel = Math.sqrt(jx**2 + jy**2 + jz**2);
 
-            // Rotation jerk (magnitude of angular jerk vector)
-            const jerkRotPitch = (smoothedData.pitch - prevSmoothed.pitch) / deltaTime;
-            const jerkRotRoll = (smoothedData.roll - prevSmoothed.roll) / deltaTime;
-            const jerkRotYaw = (smoothedData.yaw - prevSmoothed.yaw) / deltaTime;
-            const jerkRotMagnitude = Math.sqrt(jerkRotPitch**2 + jerkRotRoll**2 + jerkRotYaw**2);
+            const jp = (smoothed.pitch - prevSmoothed.pitch) / dt;
+            const jr = (smoothed.roll - prevSmoothed.roll) / dt;
+            const jyw = (smoothed.yaw - prevSmoothed.yaw) / dt;
+            const jRot = Math.sqrt(jp**2 + jr**2 + jyw**2);
 
-            if(!isJerkDetected)
-            {
-                document.getElementById('x').textContent = jerkAccelX.toFixed(2);
-                document.getElementById('y').textContent = jerkAccelY.toFixed(2);
-                document.getElementById('z').textContent = jerkAccelZ.toFixed(2);
-                document.getElementById('pitch').textContent = jerkRotPitch.toFixed(2);
-                document.getElementById('roll').textContent = jerkRotRoll.toFixed(2);
-                document.getElementById('yaw').textContent = jerkRotYaw.toFixed(2);
+            if (!isJerkDetected) {
+              document.getElementById('x').textContent = jx.toFixed(1);
+              document.getElementById('y').textContent = jy.toFixed(1);
+              document.getElementById('z').textContent = jz.toFixed(1);
+              document.getElementById('pitch').textContent = jp.toFixed(1);
+              document.getElementById('roll').textContent = jr.toFixed(1);
+              document.getElementById('yaw').textContent = jyw.toFixed(1);
             }
-            // Detect accelerometer jerk
-            if (jerkAccelMagnitude > ACCEL_JERK_THRESHOLD && !isJerkDetected) {
-              console.log("Accelerometer jerk detected:", jerkAccelMagnitude.toFixed(2));
-              document.getElementById('jerk-status').textContent = `Accel Jerk: ${jerkAccelMagnitude.toFixed(2)}`;
+
+            if (jAccel > ACCEL_JERK_THRESHOLD && !isJerkDetected) {
+              document.getElementById('jerk-status').textContent = `Accel jerk: ${jAccel.toFixed(1)}`;
               clearTimeout(jerkTimeout);
-              jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 2000);
-              
-              socket.emit("jerk", { type: "accel", value: jerkAccelMagnitude });
-              navigator.vibrate(200);
+              jerkTimeout = setTimeout(() => { document.getElementById('jerk-status').textContent = ''; }, 2000);
+              socket.emit('jerk', { type: 'accel', value: jAccel });
+              navigator.vibrate?.(200);
               isJerkDetected = true;
             }
 
-            // Detect rotation jerk
-            if (jerkRotMagnitude > ROT_JERK_THRESHOLD && !isJerkDetected) {
-              console.log("Rotation jerk detected:", jerkRotMagnitude.toFixed(2));
-              document.getElementById('jerk-status').textContent = `Rot Jerk: ${jerkRotMagnitude.toFixed(2)}`;
+            if (jRot > ROT_JERK_THRESHOLD && !isJerkDetected) {
+              document.getElementById('jerk-status').textContent = `Rot jerk: ${jRot.toFixed(1)}`;
               clearTimeout(jerkTimeout);
-              jerkTimeout = setTimeout(() => document.getElementById('jerk-status').textContent = '', 2000);
-              socket.emit("jerk", { type: "rot", value: jerkRotMagnitude });
-              navigator.vibrate(200);
+              jerkTimeout = setTimeout(() => { document.getElementById('jerk-status').textContent = ''; }, 2000);
+              socket.emit('jerk', { type: 'rot', value: jRot });
+              navigator.vibrate?.(200);
               isJerkDetected = true;
             }
           }
         }
+
         prevTime = currentTime;
-        prevSmoothed = { ...smoothedData };
-
-
-        // Emit smoothed data to server
-        socket.emit("imu", smoothedData);
+        prevSmoothed = { ...smoothed };
+        socket.emit('imu', smoothed);
       });
     };
   </script>

@@ -1,88 +1,120 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Game Host</title>
+  <title>Waltzers Host</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; margin: 0; background: #1a1a2e; color: #eee; }
+    .container { max-width: 960px; margin: 0 auto; padding: 20px; }
+    h1 { color: #e94560; text-align: center; font-size: 36px; margin-bottom: 20px; }
+    h2 { color: #eee; margin: 0 0 12px; border-bottom: 2px solid #e94560; padding-bottom: 8px; }
+
+    .card { background: #16213e; border-radius: 10px; padding: 20px; margin: 14px 0; }
+
+    #qr { text-align: center; margin: 10px 0; }
+
+    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; }
+    input[type="number"] {
+      font-size: 15px; padding: 10px 14px;
+      border: 2px solid #0f3460; border-radius: 6px;
+      background: #0f3460; color: #eee; outline: none; width: 160px;
+    }
+    input[type="number"]:focus { border-color: #e94560; }
+    button {
+      font-size: 15px; padding: 10px 22px; border: none;
+      border-radius: 6px; cursor: pointer; background: #e94560; color: white;
+    }
+    button:hover { background: #c73652; }
+    button.secondary { background: #555; }
+    button.secondary:hover { background: #444; }
+
+    .player-entry {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 22px; font-weight: bold; margin: 8px 0;
+    }
+    .player-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+  </style>
 </head>
 <body>
-  <h1>Scan to Join</h1>
-  <div id="qr"></div>
+  <div class="container">
+    <h1>Waltzers</h1>
 
-  <h2>Players:</h2>
-  <div id="players"></div>
+    <div class="card" style="text-align:center">
+      <h2>Scan to Join</h2>
+      <div id="qr"></div>
+    </div>
 
-  <h2>Game Controls</h2>
-  <input type="number" id="accelThresh" placeholder="Accel Threshold" value="50">
-  <input type="number" id="rotThresh" placeholder="Rot Threshold" value="100">
-  <button id="updateThresh">Update Thresholds for All Phones</button>
-  <br><br>
-  <button id="resetGame">Reset Game</button>
+    <div class="card">
+      <h2>Players</h2>
+      <div id="players"><span style="color:#aaa">No players yet</span></div>
+    </div>
+
+    <div class="card">
+      <h2>Game Controls</h2>
+      <div class="controls">
+        <input type="number" id="accelThresh" placeholder="Accel threshold" value="50" />
+        <input type="number" id="rotThresh" placeholder="Rot threshold" value="100" />
+        <button id="updateThresh">Update Thresholds</button>
+        <button class="secondary" id="resetGame">Reset Game</button>
+      </div>
+    </div>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
   <script>
     const socket = io('/waltzers');
-    const playersDiv = document.getElementById("players");
-    const players = {}; // id -> {name, color}
+    const playersDiv = document.getElementById('players');
+    const players = {};
 
-    socket.on("player_joined", (data) => {
-      const { id, name, color } = data;
+    const url = window.location.origin + '/phone.html';
+    QRCode.toCanvas(url, (err, canvas) => {
+      if (!err) document.getElementById('qr').appendChild(canvas);
+    });
+
+    socket.on('player_joined', ({ id, name, color }) => {
       players[id] = { name, color, out: false };
-      updatePlayersDisplay();
+      renderPlayers();
     });
 
-    socket.on("player_left", (data) => {
-      const { id } = data;
+    socket.on('player_left', ({ id }) => {
       delete players[id];
-      updatePlayersDisplay();
+      renderPlayers();
     });
 
-    socket.on("player_out", (data) => {
-      const { id } = data;
-      if (players[id]) {
-        players[id].out = true;
-        updatePlayersDisplay();
-      }
+    socket.on('player_out', ({ id }) => {
+      if (players[id]) { players[id].out = true; renderPlayers(); }
     });
 
-    socket.on("jerk_broadcast", (data) => {
-      console.log("Jerk broadcast:", data);
-      // Could add visual feedback here if needed
+    socket.on('reset', () => {
+      for (const id in players) players[id].out = false;
+      renderPlayers();
     });
 
-    socket.on("reset", () => {
-      for (const id in players) {
-        players[id].out = false;
-      }
-      updatePlayersDisplay();
-    });
-
-    document.getElementById("updateThresh").onclick = () => {
-      const accel = parseFloat(document.getElementById("accelThresh").value);
-      const rot = parseFloat(document.getElementById("rotThresh").value);
-      socket.emit("update_thresholds", { accel, rot });
+    document.getElementById('updateThresh').onclick = () => {
+      socket.emit('update_thresholds', {
+        accel: parseFloat(document.getElementById('accelThresh').value),
+        rot: parseFloat(document.getElementById('rotThresh').value),
+      });
     };
 
-    document.getElementById("resetGame").onclick = () => {
-      socket.emit("reset");
-    };
+    document.getElementById('resetGame').onclick = () => socket.emit('reset');
 
-    function updatePlayersDisplay() {
-      playersDiv.innerHTML = "";
-      for (const [id, player] of Object.entries(players)) {
-        const p = document.createElement("p");
-        p.textContent = player.out ? `${player.name} (OUT)` : player.name;
-        p.style.color = player.out ? "gray" : player.color;
-        p.style.fontSize = "24px";
-        p.style.fontWeight = "bold";
-        playersDiv.appendChild(p);
+    function renderPlayers() {
+      if (Object.keys(players).length === 0) {
+        playersDiv.innerHTML = '<span style="color:#aaa">No players yet</span>';
+        return;
+      }
+      playersDiv.innerHTML = '';
+      for (const [id, p] of Object.entries(players)) {
+        const div = document.createElement('div');
+        div.className = 'player-entry';
+        div.style.color = p.out ? '#555' : p.color;
+        div.innerHTML = `<span class="player-dot" style="background:${p.out ? '#555' : p.color}"></span>${p.name}${p.out ? ' <span style="font-size:16px;color:#e94560">(OUT)</span>' : ''}`;
+        playersDiv.appendChild(div);
       }
     }
-
-    const url = window.location.origin + "/phone.html";
-
-    QRCode.toCanvas(url, function (err, canvas) {
-      document.getElementById("qr").appendChild(canvas);
-    });
   </script>
 </body>
 </html>
