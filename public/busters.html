@@ -223,11 +223,16 @@
   socket.on('phase_prompting', ({ prompterName }) => {
     clearInterval(timerInterval);
     showPhase('prompting');
-    document.getElementById('prompting-msg').textContent = `${prompterName} is choosing a prompt...`;
+    document.getElementById('prompting-msg').textContent = `${prompterName} is entering a topic...`;
   });
 
   socket.on('prompt_loading', () => {
-    document.getElementById('prompting-msg').textContent = 'Generating prompt with AI...';
+    document.getElementById('prompting-msg').textContent = 'Generating prompts with AI...';
+  });
+
+  socket.on('phase_selecting_wait', ({ prompterName }) => {
+    showPhase('prompting');
+    document.getElementById('prompting-msg').textContent = `${prompterName} is choosing a prompt...`;
   });
 
   socket.on('prompt_error', ({ error }) => {

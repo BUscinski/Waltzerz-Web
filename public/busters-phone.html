@@ -88,6 +88,16 @@
     <p class="status-msg" id="prompting-other-msg">Waiting for the prompt...</p>
   </div>
 
+  <!-- SELECTING: you pick one of 3 prompts -->
+  <div id="screen-selecting" class="screen">
+    <h1>Busters</h1>
+    <div class="card" style="width:100%">
+      <h2>Pick a prompt</h2>
+      <p style="text-align:center;color:#aaa;margin:0 0 16px">Choose the one you want everyone to answer.</p>
+      <div id="prompt-options"></div>
+    </div>
+  </div>
+
   <!-- ANSWERING -->
   <div id="screen-answering" class="screen">
     <h1>Busters</h1>
@@ -247,6 +257,38 @@
       if (!seed) return;
       socket.emit('submit_seed', { seed });
     };
+
+    // ── Selecting phase ───────────────────────────────────────────────────────
+
+    socket.on('phase_selecting', ({ prompts }) => {
+      const container = document.getElementById('prompt-options');
+      container.innerHTML = '';
+      prompts.forEach(prompt => {
+        const btn = document.createElement('button');
+        btn.className = 'primary';
+        btn.style.marginBottom = '12px';
+        btn.style.textAlign = 'left';
+        btn.style.fontSize = '17px';
+        btn.style.fontWeight = 'normal';
+        btn.style.lineHeight = '1.4';
+        btn.textContent = prompt;
+        btn.onclick = () => {
+          container.querySelectorAll('button').forEach(b => b.disabled = true);
+          socket.emit('select_prompt', { prompt });
+        };
+        container.appendChild(btn);
+      });
+      showScreen('selecting');
+    });
+
+    socket.on('phase_selecting_wait', ({ prompterName }) => {
+      // Non-prompters stay on the waiting screen
+      if (!amPrompter) {
+        showScreen('prompting-other');
+        document.getElementById('prompting-other-msg').textContent =
+          `${prompterName} is choosing a prompt...`;
+      }
+    });
 
     // ── Answering phase ───────────────────────────────────────────────────────
 

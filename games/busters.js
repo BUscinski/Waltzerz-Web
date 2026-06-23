@@ -19,17 +19,29 @@ async function aiCall(messages, maxTokens = 100) {
   return completion.choices?.[0]?.message?.content?.trim() || "";
 }
 
-async function generatePrompt(seed) {
-  return aiCall([
-    {
-      role: "system",
-      content:
-        "You are a creative prompt generator for a party game like Quiplash. " +
-        "Generate a single short, funny, fill-in-the-blank or open-ended question. " +
-        "Respond with only the prompt — no explanation, no quotes.",
-    },
-    { role: "user", content: `Generate a Quiplash-style prompt about: ${seed}` },
-  ]);
+async function generatePrompts(seed) {
+  const text = await aiCall(
+    [
+      {
+        role: "system",
+        content:
+          "You are a creative prompt generator for a party game like Quiplash. " +
+          "Generate exactly 3 different, funny, short prompts. " +
+          "Number them 1, 2, 3 — each on its own line. No extra explanation, just the prompts.",
+      },
+      { role: "user", content: `Generate 3 different Quiplash-style prompts about: ${seed}` },
+    ],
+    250
+  );
+
+  const prompts = text
+    .split("\n")
+    .map(l => l.replace(/^\d+[\.\)]\s*/, "").trim())
+    .filter(Boolean)
+    .slice(0, 3);
+
+  if (prompts.length === 0) throw new Error("No prompts returned");
+  return prompts;
 }
 
 async function generateFallbackAnswer(prompt) {
@@ -270,14 +282,25 @@ module.exports = function setupBusters(ns) {
 
       ns.emit("prompt_loading");
       try {
-        const prompt = await generatePrompt(seed);
-        console.log("Groq result:", prompt);
-        await toAnswering(prompt);
+        const prompts = await generatePrompts(seed);
+        console.log("Groq prompts:", prompts);
+        state.phase = "selecting";
+        // Only the prompter sees the choices
+        const prompterSock = ns.sockets.get(prompter().id);
+        if (prompterSock) prompterSock.emit("phase_selecting", { prompts });
+        // Everyone else waits
+        ns.emit("phase_selecting_wait", { prompterName: prompter().name });
       } catch (e) {
         console.error("Prompt generation failed:", e);
-        state.phase = "prompting"; // allow retry
-        ns.emit("prompt_error", { error: "Failed to generate prompt — please try again." });
+        state.phase = "prompting";
+        ns.emit("prompt_error", { error: "Failed to generate prompts — please try again." });
       }
+    });
+
+    socket.on("select_prompt", async ({ prompt }) => {
+      if (state.phase !== "selecting") return;
+      if (prompter()?.id !== socket.id) return;
+      await toAnswering(prompt);
     });
 
     socket.on("submit_answer", ({ text }) => {
