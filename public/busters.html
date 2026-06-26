@@ -305,7 +305,8 @@
       html += `
         <div class="summary-round">
           <h3>Round ${round.round} — <em>${round.prompter}</em> prompted</h3>
-          <div class="prompt-box" style="font-size:20px;padding:16px;margin:8px 0">${round.prompt}</div>
+          ${round.seed ? `<p style="text-align:center;color:#aaa;font-size:14px;margin:0 0 6px">seed: "${round.seed}"</p>` : ''}
+          <div class="prompt-box" style="font-size:20px;padding:16px;margin:0 0 8px">${round.prompt}</div>
           <table>
             <tbody>
               ${[...round.results].sort((a, b) => b.votes - a.votes).map(r => `

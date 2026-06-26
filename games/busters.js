@@ -217,6 +217,7 @@ module.exports = function setupBusters(ns) {
     const roundData = {
       round: state.roundHistory.length + 1,
       prompter: prompter()?.name ?? "Unknown",
+      seed: state.currentSeed,
       prompt: state.currentPrompt,
       results,
       winnerName: winner?.name ?? null,
@@ -280,6 +281,7 @@ module.exports = function setupBusters(ns) {
       if (state.phase !== "prompting") return;
       if (prompter()?.id !== socket.id) return;
 
+      state.currentSeed = seed;
       ns.emit("prompt_loading");
       try {
         const prompts = await generatePrompts(seed);
