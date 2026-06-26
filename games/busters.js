@@ -5,7 +5,7 @@ const groq = new OpenAI({
   baseURL: "https://api.groq.com/openai/v1",
 });
 
-const MODEL = "llama-3.1-8b-instant";
+const MODEL = "llama-3.3-70b-versatile";
 const ANSWER_SECS = 90;
 const VOTE_SECS = 90;
 
@@ -25,8 +25,10 @@ async function generatePrompts(seed) {
       {
         role: "system",
         content:
-          "You are a creative prompt generator for a party game like Quiplash. " +
+          "You are a creative prompt generator for a party game. " +
           "Generate exactly 3 different, funny, short prompts. " +
+          "Some example of prompts are: 'The worst thing to say to a bride on her wedding day' " +
+          "The most ridiculous law that exists in Florida'" +
           "Number them 1, 2, 3 — each on its own line. No extra explanation, just the prompts.",
       },
       { role: "user", content: `Generate 3 different Quiplash-style prompts about: ${seed}` },
