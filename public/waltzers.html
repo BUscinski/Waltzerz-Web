@@ -68,9 +68,33 @@
     const playersDiv = document.getElementById('players');
     const players = {};
 
-    const url = window.location.origin + '/phone.html';
-    QRCode.toCanvas(url, (err, canvas) => {
-      if (!err) document.getElementById('qr').appendChild(canvas);
+    let roomCode = null;
+
+    fetch('/api/room?game=waltzers')
+      .then(r => r.json())
+      .then(({ roomCode: code, phoneUrl }) => {
+        roomCode = code;
+        const url = window.location.origin + phoneUrl;
+        QRCode.toCanvas(url, (err, canvas) => {
+          if (!err) {
+            const qrEl = document.getElementById('qr');
+            qrEl.innerHTML = '<div style="font-size:13px;color:#aaa;margin-bottom:6px">Scan to join</div>';
+            qrEl.appendChild(canvas);
+            const codeDiv = document.createElement('div');
+            codeDiv.style.cssText = 'font-size:32px;font-weight:bold;letter-spacing:8px;color:#e94560;margin-top:8px';
+            codeDiv.textContent = code;
+            qrEl.appendChild(codeDiv);
+            const label = document.createElement('p');
+            label.style.cssText = 'font-size:12px;color:#aaa;margin:2px 0 0';
+            label.textContent = 'room code';
+            qrEl.appendChild(label);
+          }
+        });
+        socket.emit('host_room', { roomCode: code });
+      });
+
+    socket.on('connect', () => {
+      if (roomCode) socket.emit('host_room', { roomCode });
     });
 
     socket.on('player_joined', ({ id, name, color }) => {

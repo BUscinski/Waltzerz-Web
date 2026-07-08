@@ -76,7 +76,9 @@
     <div class="card" id="qr-display">
       <h2>Join Game</h2>
       <p style="color:#aaa">Scan to join on your phone:</p>
-      <div id="qrcode"></div>
+      <div id="qrcode"><div style="width:220px;height:220px;background:#0f3460;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#aaa;font-size:13px">Creating room...</div></div>
+      <div id="room-code-display" style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#e94560;margin-top:12px">—</div>
+      <p style="font-size:12px;color:#aaa;margin:2px 0 0">room code</p>
     </div>
 
     <div class="card">
@@ -116,11 +118,25 @@
     let players = {};
     let gameActive = false;
     let jerkThreshold = 300;
-    const phoneUrl = `${window.location.protocol}//${window.location.host}/shakeweight-phone.html`;
 
-    new QRCode(document.getElementById('qrcode'), {
-      text: phoneUrl, width: 220, height: 220,
-      colorDark: '#e94560', colorLight: '#ffffff'
+    let roomCode = null;
+
+    fetch('/api/room?game=shakeweight')
+      .then(r => r.json())
+      .then(({ roomCode: code, phoneUrl }) => {
+        roomCode = code;
+        document.getElementById('qrcode').innerHTML = '';
+        new QRCode(document.getElementById('qrcode'), {
+          text: window.location.origin + phoneUrl, width: 220, height: 220,
+          colorDark: '#e94560', colorLight: '#ffffff'
+        });
+        const codeEl = document.getElementById('room-code-display');
+        if (codeEl) codeEl.textContent = code;
+        socket.emit('host_room', { roomCode: code });
+      });
+
+    socket.on('connect', () => {
+      if (roomCode) socket.emit('host_room', { roomCode });
     });
 
     document.getElementById('threshold-input').addEventListener('input', (e) => {

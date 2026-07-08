@@ -11,6 +11,22 @@ app.use(express.static("public"));
 app.use(express.json());
 
 const { saveGame } = require("./db");
+const { generateCode } = require("./lib/rooms");
+
+const GAME_PHONE_PAGE = {
+  busters: "busters-phone",
+  shakeweight: "shakeweight-phone",
+  waltzers: "phone",
+};
+
+app.get("/api/room", (req, res) => {
+  const game = req.query.game;
+  if (!GAME_PHONE_PAGE[game]) return res.status(400).json({ error: "Unknown game" });
+  const roomCode = generateCode();
+  const phoneUrl = `/${GAME_PHONE_PAGE[game]}.html?room=${roomCode}`;
+  console.log(`Room created: ${roomCode} for ${game}`);
+  res.json({ roomCode, phoneUrl });
+});
 
 app.post("/api/save-game", (req, res) => {
   try {

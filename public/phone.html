@@ -50,8 +50,15 @@
 <body>
   <h1>Waltzers</h1>
 
-  <div class="card">
+  <div class="card" id="join-card">
+    <div id="room-display" style="text-align:center;margin-bottom:16px;display:none">
+      <span style="color:#aaa;font-size:13px">Room</span>
+      <div id="room-code-show" style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#e94560"></div>
+    </div>
+    <input type="text" id="room-input" placeholder="Room code (e.g. XKQF)" maxlength="4"
+      style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center" />
     <input type="text" id="name" placeholder="Your name" />
+    <p id="join-error" style="color:#e94560;text-align:center;font-size:14px;min-height:18px;margin:0 0 8px"></p>
     <button class="primary" id="join">Join Game</button>
   </div>
 
@@ -71,6 +78,20 @@
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io('/waltzers');
+
+    // Room code from URL
+    const urlRoom = new URLSearchParams(window.location.search).get('room');
+    if (urlRoom) {
+      const code = urlRoom.toUpperCase();
+      document.getElementById('room-display').style.display = 'block';
+      document.getElementById('room-code-show').textContent = code;
+      document.getElementById('room-input').style.display = 'none';
+    }
+
+    socket.on('room_error', ({ error }) => {
+      document.getElementById('join-error').textContent = error;
+      document.getElementById('join').disabled = false;
+    });
 
     socket.on('update_thresholds', ({ accel, rot }) => {
       ACCEL_JERK_THRESHOLD = accel;
@@ -101,9 +122,14 @@
     let ROT_JERK_THRESHOLD = 500;
 
     document.getElementById('join').onclick = async () => {
+      const code = urlRoom
+        ? urlRoom.toUpperCase()
+        : document.getElementById('room-input').value.trim().toUpperCase();
       const name = document.getElementById('name').value.trim();
-      if (!name) return;
-      socket.emit('join', { name });
+      if (!code || !name) return;
+      document.getElementById('join').disabled = true;
+      document.getElementById('join-error').textContent = '';
+      socket.emit('join_room', { code, name });
 
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         await DeviceMotionEvent.requestPermission();

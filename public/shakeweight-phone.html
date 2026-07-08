@@ -53,7 +53,14 @@
 
   <div id="join-area">
     <div class="card">
+      <div id="room-display" style="text-align:center;margin-bottom:16px;display:none">
+        <span style="color:#aaa;font-size:13px">Room</span>
+        <div id="room-code-show" style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#e94560"></div>
+      </div>
+      <input type="text" id="room-input" placeholder="Room code (e.g. XKQF)" maxlength="4"
+        style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center" />
       <input type="text" id="name" placeholder="Your name" maxlength="20" />
+      <p id="join-error" style="color:#e94560;text-align:center;font-size:14px;min-height:18px;margin:0 0 8px"></p>
       <button class="primary" id="join">Join Game</button>
     </div>
   </div>
@@ -78,6 +85,20 @@
   <script>
     const socket = io('/shakeweight');
     let gameActive = false;
+
+    // Room code from URL
+    const urlRoom = new URLSearchParams(window.location.search).get('room');
+    if (urlRoom) {
+      const code = urlRoom.toUpperCase();
+      document.getElementById('room-display').style.display = 'block';
+      document.getElementById('room-code-show').textContent = code;
+      document.getElementById('room-input').style.display = 'none';
+    }
+
+    socket.on('room_error', ({ error }) => {
+      document.getElementById('join-error').textContent = error;
+      document.getElementById('join').disabled = false;
+    });
     let currentJerkScore = 0;
     let sendInterval = null;
 
@@ -172,15 +193,19 @@
     }
 
     document.getElementById('join').onclick = async () => {
+      const code = urlRoom
+        ? urlRoom.toUpperCase()
+        : document.getElementById('room-input').value.trim().toUpperCase();
       const name = document.getElementById('name').value.trim();
-      if (!name) return;
+      if (!code || !name) return;
       document.getElementById('join').disabled = true;
+      document.getElementById('join-error').textContent = '';
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
         await DeviceMotionEvent.requestPermission();
       }
       window.addEventListener('devicemotion', onMotion);
       startCalibration(() => {
-        socket.emit('join', { name });
+        socket.emit('join_room', { code, name });
         document.getElementById('game-area').style.display = 'block';
         document.getElementById('status').textContent = 'Waiting for the game to start...';
       });

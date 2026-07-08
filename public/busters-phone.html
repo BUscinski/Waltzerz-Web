@@ -59,7 +59,14 @@
   <div id="screen-join" class="screen active">
     <h1>Busters</h1>
     <div class="card">
+      <div id="room-display" style="text-align:center;margin-bottom:16px;display:none">
+        <span style="color:#aaa;font-size:13px">Room</span>
+        <div id="room-code-show" style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#e94560"></div>
+      </div>
+      <input type="text" id="room-input" placeholder="Room code (e.g. XKQF)" maxlength="4"
+        style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center" />
       <input type="text" id="name-input" placeholder="Your name" maxlength="20" />
+      <div id="error-msg" style="color:#e94560;text-align:center;font-size:15px;min-height:20px;margin-bottom:8px"></div>
       <button class="primary" id="join-btn">Join Game</button>
     </div>
   </div>
@@ -149,6 +156,16 @@
     let timerInterval = null;
     let amPrompter = false;
 
+    // ── Room code from URL ────────────────────────────────────────────────────
+
+    const urlRoom = new URLSearchParams(window.location.search).get('room');
+    if (urlRoom) {
+      const code = urlRoom.toUpperCase();
+      document.getElementById('room-display').style.display = 'block';
+      document.getElementById('room-code-show').textContent = code;
+      document.getElementById('room-input').style.display = 'none';
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     function showScreen(name) {
@@ -173,11 +190,20 @@
     // ── Join ──────────────────────────────────────────────────────────────────
 
     document.getElementById('join-btn').onclick = () => {
+      const code = urlRoom
+        ? urlRoom.toUpperCase()
+        : document.getElementById('room-input').value.trim().toUpperCase();
       myName = document.getElementById('name-input').value.trim();
-      if (!myName) return;
+      if (!code || !myName) return;
       document.getElementById('join-btn').disabled = true;
-      socket.emit('join', { name: myName });
+      document.getElementById('error-msg').textContent = '';
+      socket.emit('join_room', { code, name: myName });
     };
+
+    socket.on('room_error', ({ error }) => {
+      document.getElementById('error-msg').textContent = error;
+      document.getElementById('join-btn').disabled = false;
+    });
 
     socket.on('player_joined', ({ id }) => {
       if (id === socket.id) {
@@ -367,6 +393,7 @@
       clearInterval(timerInterval);
       document.getElementById('name-input').value = '';
       document.getElementById('join-btn').disabled = false;
+      document.getElementById('error-msg').textContent = '';
       showScreen('join');
     });
   </script>

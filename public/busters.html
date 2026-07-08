@@ -67,7 +67,9 @@
   <div class="top-row">
     <div class="card qr-card">
       <p style="margin:0 0 8px;font-size:13px;color:#aaa">Scan to join</p>
-      <div id="qrcode"></div>
+      <div id="qrcode"><div style="width:160px;height:160px;background:#0f3460;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#aaa;font-size:13px">Creating room...</div></div>
+      <div id="room-code" style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#e94560;margin:10px 0 2px;text-align:center">—</div>
+      <p style="font-size:11px;color:#aaa;margin:0;text-align:center">room code</p>
     </div>
     <div class="card players-card">
       <h3 style="margin-top:0">Players</h3>
@@ -135,10 +137,23 @@
   let timerInterval = null;
   let answeredSet = new Set();
   let votedSet = new Set();
+  let roomCode = null;
 
-  new QRCode(document.getElementById('qrcode'), {
-    text: `${window.location.origin}/busters-phone.html`,
-    width: 160, height: 160
+  // Fetch room code from server before connecting socket
+  fetch('/api/room?game=busters')
+    .then(r => r.json())
+    .then(({ roomCode: code, phoneUrl }) => {
+      roomCode = code;
+      document.getElementById('room-code').textContent = code;
+      document.getElementById('qrcode').innerHTML = '';
+      new QRCode(document.getElementById('qrcode'), { text: window.location.origin + phoneUrl, width: 160, height: 160 });
+      // Now connect the socket and register as host for this room
+      socket.emit('host_room', { roomCode: code });
+    });
+
+  socket.on('connect', () => {
+    // Re-register if socket reconnects mid-session
+    if (roomCode) socket.emit('host_room', { roomCode });
   });
 
   // ── Helpers ────────────────────────────────────────────────────────────────
