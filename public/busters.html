@@ -138,21 +138,32 @@
   let answeredSet = new Set();
   let votedSet = new Set();
   let roomCode = null;
+  const ROOM_KEY = 'busters_roomCode';
 
-  // Fetch room code from server before connecting socket
-  fetch('/api/room?game=busters')
-    .then(r => r.json())
-    .then(({ roomCode: code, phoneUrl }) => {
-      roomCode = code;
-      document.getElementById('room-code').textContent = code;
-      document.getElementById('qrcode').innerHTML = '';
-      new QRCode(document.getElementById('qrcode'), { text: window.location.origin + phoneUrl, width: 160, height: 160 });
-      // Now connect the socket and register as host for this room
-      socket.emit('host_room', { roomCode: code });
+  function applyRoomCode(code, phoneUrl) {
+    roomCode = code;
+    document.getElementById('room-code').textContent = code;
+    document.getElementById('qrcode').innerHTML = '';
+    new QRCode(document.getElementById('qrcode'), {
+      text: window.location.origin + phoneUrl, width: 160, height: 160
     });
+    socket.emit('host_room', { roomCode: code });
+  }
+
+  const savedCode = sessionStorage.getItem(ROOM_KEY);
+  if (savedCode) {
+    // Reuse existing room on refresh — server will rejoin socket to the live room
+    applyRoomCode(savedCode, `/busters-phone.html?room=${savedCode}`);
+  } else {
+    fetch('/api/room?game=busters')
+      .then(r => r.json())
+      .then(({ roomCode: code, phoneUrl }) => {
+        sessionStorage.setItem(ROOM_KEY, code);
+        applyRoomCode(code, phoneUrl);
+      });
+  }
 
   socket.on('connect', () => {
-    // Re-register if socket reconnects mid-session
     if (roomCode) socket.emit('host_room', { roomCode });
   });
 

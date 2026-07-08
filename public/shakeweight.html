@@ -120,20 +120,31 @@
     let jerkThreshold = 300;
 
     let roomCode = null;
+    const ROOM_KEY = 'shakeweight_roomCode';
 
-    fetch('/api/room?game=shakeweight')
-      .then(r => r.json())
-      .then(({ roomCode: code, phoneUrl }) => {
-        roomCode = code;
-        document.getElementById('qrcode').innerHTML = '';
-        new QRCode(document.getElementById('qrcode'), {
-          text: window.location.origin + phoneUrl, width: 220, height: 220,
-          colorDark: '#e94560', colorLight: '#ffffff'
-        });
-        const codeEl = document.getElementById('room-code-display');
-        if (codeEl) codeEl.textContent = code;
-        socket.emit('host_room', { roomCode: code });
+    function applyRoomCode(code, phoneUrl) {
+      roomCode = code;
+      document.getElementById('qrcode').innerHTML = '';
+      new QRCode(document.getElementById('qrcode'), {
+        text: window.location.origin + phoneUrl, width: 220, height: 220,
+        colorDark: '#e94560', colorLight: '#ffffff'
       });
+      const codeEl = document.getElementById('room-code-display');
+      if (codeEl) codeEl.textContent = code;
+      socket.emit('host_room', { roomCode: code });
+    }
+
+    const savedCode = sessionStorage.getItem(ROOM_KEY);
+    if (savedCode) {
+      applyRoomCode(savedCode, `/shakeweight-phone.html?room=${savedCode}`);
+    } else {
+      fetch('/api/room?game=shakeweight')
+        .then(r => r.json())
+        .then(({ roomCode: code, phoneUrl }) => {
+          sessionStorage.setItem(ROOM_KEY, code);
+          applyRoomCode(code, phoneUrl);
+        });
+    }
 
     socket.on('connect', () => {
       if (roomCode) socket.emit('host_room', { roomCode });

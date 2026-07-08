@@ -69,29 +69,40 @@
     const players = {};
 
     let roomCode = null;
+    const ROOM_KEY = 'waltzers_roomCode';
 
-    fetch('/api/room?game=waltzers')
-      .then(r => r.json())
-      .then(({ roomCode: code, phoneUrl }) => {
-        roomCode = code;
-        const url = window.location.origin + phoneUrl;
-        QRCode.toCanvas(url, (err, canvas) => {
-          if (!err) {
-            const qrEl = document.getElementById('qr');
-            qrEl.innerHTML = '<div style="font-size:13px;color:#aaa;margin-bottom:6px">Scan to join</div>';
-            qrEl.appendChild(canvas);
-            const codeDiv = document.createElement('div');
-            codeDiv.style.cssText = 'font-size:32px;font-weight:bold;letter-spacing:8px;color:#e94560;margin-top:8px';
-            codeDiv.textContent = code;
-            qrEl.appendChild(codeDiv);
-            const label = document.createElement('p');
-            label.style.cssText = 'font-size:12px;color:#aaa;margin:2px 0 0';
-            label.textContent = 'room code';
-            qrEl.appendChild(label);
-          }
-        });
-        socket.emit('host_room', { roomCode: code });
+    function applyRoomCode(code, phoneUrl) {
+      roomCode = code;
+      const url = window.location.origin + phoneUrl;
+      QRCode.toCanvas(url, (err, canvas) => {
+        if (!err) {
+          const qrEl = document.getElementById('qr');
+          qrEl.innerHTML = '<div style="font-size:13px;color:#aaa;margin-bottom:6px">Scan to join</div>';
+          qrEl.appendChild(canvas);
+          const codeDiv = document.createElement('div');
+          codeDiv.style.cssText = 'font-size:32px;font-weight:bold;letter-spacing:8px;color:#e94560;margin-top:8px';
+          codeDiv.textContent = code;
+          qrEl.appendChild(codeDiv);
+          const label = document.createElement('p');
+          label.style.cssText = 'font-size:12px;color:#aaa;margin:2px 0 0';
+          label.textContent = 'room code';
+          qrEl.appendChild(label);
+        }
       });
+      socket.emit('host_room', { roomCode: code });
+    }
+
+    const savedCode = sessionStorage.getItem(ROOM_KEY);
+    if (savedCode) {
+      applyRoomCode(savedCode, `/phone.html?room=${savedCode}`);
+    } else {
+      fetch('/api/room?game=waltzers')
+        .then(r => r.json())
+        .then(({ roomCode: code, phoneUrl }) => {
+          sessionStorage.setItem(ROOM_KEY, code);
+          applyRoomCode(code, phoneUrl);
+        });
+    }
 
     socket.on('connect', () => {
       if (roomCode) socket.emit('host_room', { roomCode });
