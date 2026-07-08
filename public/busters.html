@@ -118,7 +118,11 @@
   <div id="phase-summary" class="card phase">
     <h2 style="text-align:center;color:#e94560;margin-top:0">Game Over!</h2>
     <div id="summary-content"></div>
-    <button class="primary" id="play-again-btn">Play Again</button>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="primary" id="save-game-btn">Save Results</button>
+      <button class="primary" id="play-again-btn" style="background:#555">Play Again</button>
+    </div>
+    <p id="save-status" style="text-align:center;font-size:15px;min-height:20px;margin-top:8px"></p>
   </div>
 </div>
 
@@ -127,6 +131,7 @@
 <script>
   const socket = io('/busters');
   let players = {};
+  let lastSummaryData = null;
   let timerInterval = null;
   let answeredSet = new Set();
   let votedSet = new Set();
@@ -292,6 +297,9 @@
   socket.on('phase_summary', ({ rounds, totalVotes }) => {
     clearInterval(timerInterval);
     showPhase('summary');
+    lastSummaryData = { rounds, players: Object.values(players).map(p => p.name) };
+    document.getElementById('save-game-btn').disabled = false;
+    document.getElementById('save-status').textContent = '';
 
     const sorted = Object.entries(totalVotes).sort((a, b) => b[1] - a[1]);
     const medals = ['🥇', '🥈', '🥉'];
@@ -348,6 +356,31 @@
 
   document.getElementById('next-round-btn').onclick = () => socket.emit('next_round');
   document.getElementById('play-again-btn').onclick = () => socket.emit('reset');
+
+  document.getElementById('save-game-btn').onclick = async () => {
+    if (!lastSummaryData) return;
+    const btn = document.getElementById('save-game-btn');
+    const status = document.getElementById('save-status');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+      const resp = await fetch('/api/save-game', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(lastSummaryData),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Save failed');
+      btn.textContent = 'Saved!';
+      status.style.color = '#4caf50';
+      status.textContent = `Session #${data.sessionId} saved to database.`;
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Save Results';
+      status.style.color = '#e94560';
+      status.textContent = `Error: ${e.message}`;
+    }
+  };
 </script>
 </body>
 </html>
