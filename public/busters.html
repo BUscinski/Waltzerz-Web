@@ -302,10 +302,16 @@
     html += '</div>';
 
     rounds.forEach(round => {
+      const otherOptions = (round.promptOptions || []).filter(p => p !== round.prompt);
       html += `
         <div class="summary-round">
           <h3>Round ${round.round} — <em>${round.prompter}</em> prompted</h3>
-          ${round.seed ? `<p style="text-align:center;color:#aaa;font-size:14px;margin:0 0 6px">seed: "${round.seed}"</p>` : ''}
+          ${round.seed ? `<p style="text-align:center;color:#aaa;font-size:13px;margin:0 0 10px">seed: "<em>${round.seed}</em>"</p>` : ''}
+          ${otherOptions.length ? `
+            <p style="color:#aaa;font-size:13px;margin:0 0 6px">Other options not chosen:</p>
+            ${otherOptions.map(p => `<p style="color:#555;font-size:14px;margin:0 0 4px;padding-left:10px;border-left:2px solid #333">— ${p}</p>`).join('')}
+            <p style="color:#aaa;font-size:13px;margin:10px 0 6px">Chosen prompt:</p>
+          ` : ''}
           <div class="prompt-box" style="font-size:20px;padding:16px;margin:0 0 8px">${round.prompt}</div>
           <table>
             <tbody>

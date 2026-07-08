@@ -82,7 +82,9 @@ module.exports = function setupBusters(ns) {
       phase: "lobby",
       players: [],          // [{ id, name, color }] — join order matters
       prompterIndex: 0,
+      currentSeed: "",
       currentPrompt: "",
+      promptOptions: [],    // all 3 options Groq returned
       answers: {},          // socketId → { text, isAI }
       shuffledAnswers: [],  // [{ answerId: socketId, text, isAI }]
       votes: {},            // voterSocketId → answererSocketId
@@ -220,6 +222,7 @@ module.exports = function setupBusters(ns) {
       round: state.roundHistory.length + 1,
       prompter: prompter()?.name ?? "Unknown",
       seed: state.currentSeed,
+      promptOptions: state.promptOptions,
       prompt: state.currentPrompt,
       results,
       winnerName: winner?.name ?? null,
@@ -288,6 +291,7 @@ module.exports = function setupBusters(ns) {
       try {
         const prompts = await generatePrompts(seed);
         console.log("Groq prompts:", prompts);
+        state.promptOptions = prompts;
         state.phase = "selecting";
         // Only the prompter sees the choices
         const prompterSock = ns.sockets.get(prompter().id);
