@@ -324,6 +324,7 @@
     // ── Selecting phase ───────────────────────────────────────────────────────
 
     socket.on('phase_selecting', ({ prompts }) => {
+      amPrompter = true;
       const container = document.getElementById('prompt-options');
       container.innerHTML = '';
       prompts.forEach(prompt => {
