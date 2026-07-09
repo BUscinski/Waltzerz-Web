@@ -66,6 +66,8 @@
       <input type="text" id="room-input" placeholder="Room code (e.g. XKQF)" maxlength="4"
         style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center" />
       <input type="text" id="name-input" placeholder="Your name" maxlength="20" />
+      <input type="text" id="seed-input" placeholder="Your topic (e.g. awkward dates, pirates...)" maxlength="80" />
+      <p style="color:#aaa;font-size:13px;text-align:center;margin:-4px 0 12px">The AI will turn your topic into a prompt when it's your turn.</p>
       <div id="error-msg" style="color:#e94560;text-align:center;font-size:15px;min-height:20px;margin-bottom:8px"></div>
       <button class="primary" id="join-btn">Join Game</button>
     </div>
@@ -77,22 +79,21 @@
     <p class="status-msg" id="waiting-msg">Please wait...</p>
   </div>
 
-  <!-- PROMPTING: you are the prompter -->
-  <div id="screen-prompting-own" class="screen">
-    <h1>Busters</h1>
-    <div class="card">
-      <h2>You're up! 🎤</h2>
-      <p style="text-align:center;color:#aaa;margin:0 0 16px">Give the AI a topic or theme and it'll create the prompt for everyone.</p>
-      <input type="text" id="seed-input" placeholder="e.g. awkward dates, office life, pirates..." />
-      <div id="error-msg"></div>
-      <button class="primary" id="seed-submit-btn">Generate Prompt</button>
-    </div>
-  </div>
-
-  <!-- PROMPTING: waiting for someone else -->
+  <!-- PROMPTING: waiting for someone else (or your prompts are still loading) -->
   <div id="screen-prompting-other" class="screen">
     <h1>Busters</h1>
     <p class="status-msg" id="prompting-other-msg">Waiting for the prompt...</p>
+  </div>
+
+  <!-- PROMPTING: fallback seed entry if generation failed at join time -->
+  <div id="screen-prompting-own" class="screen">
+    <h1>Busters</h1>
+    <div class="card">
+      <h2>Let's try again</h2>
+      <p style="text-align:center;color:#aaa;margin:0 0 16px">The AI couldn't generate prompts from your topic — enter a new one.</p>
+      <input type="text" id="seed-retry-input" placeholder="e.g. awkward dates, office life..." />
+      <button class="primary" id="seed-submit-btn">Generate Prompt</button>
+    </div>
   </div>
 
   <!-- SELECTING: you pick one of 3 prompts -->
@@ -194,10 +195,14 @@
         ? urlRoom.toUpperCase()
         : document.getElementById('room-input').value.trim().toUpperCase();
       myName = document.getElementById('name-input').value.trim();
-      if (!code || !myName) return;
+      const seed = document.getElementById('seed-input').value.trim();
+      if (!code || !myName || !seed) {
+        document.getElementById('error-msg').textContent = 'Please fill in all three fields.';
+        return;
+      }
       document.getElementById('join-btn').disabled = true;
       document.getElementById('error-msg').textContent = '';
-      socket.emit('join_room', { code, name: myName });
+      socket.emit('join_room', { code, name: myName, seed });
     };
 
     socket.on('room_error', ({ error }) => {
@@ -219,12 +224,11 @@
       const isPrompter = players[prompterIndex]?.id === socket.id;
 
       if (phase === 'lobby' || phase === 'prompting') {
-        if (phase === 'prompting' && isPrompter) {
-          showScreen('prompting-own');
-        } else if (phase === 'prompting') {
-          showScreen('prompting-other');
+        if (phase === 'prompting') {
+          // Prompts are generating — show waiting regardless of who the prompter is
           document.getElementById('prompting-other-msg').textContent =
-            `${prompterName} is picking a topic...`;
+            isPrompter ? 'Preparing your prompts...' : `${prompterName}'s prompts are loading...`;
+          showScreen('prompting-other');
         } else {
           showScreen('waiting');
           document.getElementById('waiting-msg').textContent = 'Waiting to start...';
@@ -243,44 +247,49 @@
     });
 
     // ── Prompting phase ───────────────────────────────────────────────────────
+    // phase_prompting now only fires when prompts are still generating (rare)
+    // or when generation failed. Normal flow goes straight to phase_selecting.
 
     socket.on('phase_prompting', ({ prompterId, prompterName }) => {
       clearInterval(timerInterval);
-      document.getElementById('error-msg').textContent = '';
       amPrompter = (prompterId === socket.id);
       if (amPrompter) {
-        document.getElementById('seed-input').value = '';
-        document.getElementById('seed-submit-btn').disabled = false;
-        document.getElementById('seed-submit-btn').textContent = 'Generate Prompt';
-        showScreen('prompting-own');
+        // Prompts still loading — show a waiting message
+        document.getElementById('prompting-other-msg').textContent =
+          'Preparing your prompts...';
+        showScreen('prompting-other');
       } else {
         document.getElementById('prompting-other-msg').textContent =
-          `${prompterName} is picking a topic...`;
+          `${prompterName}'s prompts are loading...`;
         showScreen('prompting-other');
       }
     });
 
+    // Only fires if prompt generation failed at join — fallback re-entry
+    socket.on('prompt_retry', ({ message }) => {
+      document.getElementById('seed-submit-btn').disabled = false;
+      document.getElementById('seed-submit-btn').textContent = 'Generate Prompt';
+      showScreen('prompting-own');
+    });
+
     socket.on('prompt_loading', () => {
-      if (amPrompter) {
-        document.getElementById('seed-submit-btn').disabled = true;
-        document.getElementById('seed-submit-btn').textContent = 'Generating...';
-      } else {
-        document.getElementById('prompting-other-msg').textContent = 'AI is generating the prompt...';
-      }
+      document.getElementById('prompting-other-msg').textContent =
+        amPrompter ? 'Preparing your prompts...' : 'AI is generating the prompt...';
+      showScreen('prompting-other');
     });
 
     socket.on('prompt_error', ({ error }) => {
-      if (amPrompter) {
-        document.getElementById('error-msg').textContent = error;
-        document.getElementById('seed-submit-btn').disabled = false;
-        document.getElementById('seed-submit-btn').textContent = 'Generate Prompt';
-        showScreen('prompting-own');
-      }
+      document.getElementById('seed-submit-btn').disabled = false;
+      document.getElementById('seed-submit-btn').textContent = 'Generate Prompt';
+      showScreen('prompting-own');
     });
 
+    // Fallback seed submit (only shown when generation failed at join)
     document.getElementById('seed-submit-btn').onclick = () => {
-      const seed = document.getElementById('seed-input').value.trim();
+      const seed = document.getElementById('seed-retry-input').value.trim();
       if (!seed) return;
+      document.getElementById('seed-submit-btn').disabled = true;
+      document.getElementById('seed-submit-btn').textContent = 'Generating...';
       socket.emit('submit_seed', { seed });
     };
 
