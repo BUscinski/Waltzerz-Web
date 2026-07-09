@@ -166,6 +166,7 @@
     let myName = '';
     let timerInterval = null;
     let amPrompter = false;
+    let topicSubmitted = false;
 
     // ── Room code from URL ────────────────────────────────────────────────────
 
@@ -236,6 +237,7 @@
       }
       document.getElementById('topic-submit-btn').disabled = true;
       document.getElementById('topic-error').textContent = '';
+      topicSubmitted = true;
       socket.emit('submit_topic', { seed });
       showScreen('waiting');
       document.getElementById('waiting-msg').textContent = 'Topic submitted! Waiting for the host to start...';
@@ -253,6 +255,8 @@
           document.getElementById('prompting-other-msg').textContent =
             isPrompter ? 'Preparing your prompts...' : `${prompterName}'s prompts are loading...`;
           showScreen('prompting-other');
+        } else if (!topicSubmitted) {
+          showScreen('topic');
         } else {
           showScreen('waiting');
           document.getElementById('waiting-msg').textContent = 'Waiting to start...';
@@ -423,6 +427,7 @@
 
     socket.on('reset', () => {
       myName = '';
+      topicSubmitted = false;
       clearInterval(timerInterval);
       document.getElementById('name-input').value = '';
       document.getElementById('join-btn').disabled = false;
