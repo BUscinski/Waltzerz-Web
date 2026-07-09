@@ -81,7 +81,8 @@
 
   <!-- LOBBY -->
   <div id="phase-lobby" class="card phase active">
-    <p class="status-msg">Waiting for players to join.<br>The first player to join will start the game.</p>
+    <p class="status-msg" id="lobby-msg">Waiting for players to join and submit their topics.</p>
+    <button class="primary" id="start-game-btn" disabled style="opacity:0.4;cursor:not-allowed">Start Game</button>
   </div>
 
   <!-- PROMPTING -->
@@ -191,9 +192,30 @@
   function updatePlayerList() {
     const div = document.getElementById('player-list');
     const entries = Object.values(players);
-    div.innerHTML = entries.length
-      ? entries.map(p => `<span class="player-chip" style="background:${p.color}">${p.name}</span>`).join('')
-      : '<span style="color:#aaa">No players yet</span>';
+    if (!entries.length) {
+      div.innerHTML = '<span style="color:#aaa">No players yet</span>';
+    } else {
+      div.innerHTML = entries.map(p => p.color
+        ? `<span class="player-chip" style="background:${p.color}">${p.name} ✓</span>`
+        : `<span class="player-chip" style="background:#333;color:#aaa">${p.name}…</span>`
+      ).join('');
+    }
+    updateStartButton();
+  }
+
+  function updateStartButton() {
+    const btn = document.getElementById('start-game-btn');
+    if (!btn) return;
+    const entries = Object.values(players);
+    const allReady = entries.length > 0 && entries.every(p => p.color !== null);
+    btn.disabled = !allReady;
+    btn.style.opacity = allReady ? '1' : '0.4';
+    btn.style.cursor = allReady ? 'pointer' : 'not-allowed';
+    document.getElementById('lobby-msg').textContent = allReady
+      ? 'All players ready — you can start the game!'
+      : entries.some(p => !p.color)
+        ? 'Waiting for all players to submit their topics...'
+        : 'Waiting for players to join.';
   }
 
   function buildChecklist(containerId, doneSet) {
@@ -219,6 +241,8 @@
 
   // ── Socket events ──────────────────────────────────────────────────────────
 
+  document.getElementById('start-game-btn').onclick = () => socket.emit('start_game');
+
   socket.on('game_state', ({ phase, players: ps, prompterName, currentPrompt, answeredIds }) => {
     players = {};
     ps.forEach(p => { players[p.id] = { name: p.name, color: p.color }; });
@@ -240,10 +264,15 @@
     }
   });
 
-  socket.on('player_joined', ({ id, name, color }) => {
-    players[id] = { name, color };
+  socket.on('player_joined', ({ id, name }) => {
+    players[id] = { name, color: null };
     updatePlayerList();
     document.getElementById('error-msg').textContent = '';
+  });
+
+  socket.on('player_ready', ({ id, color }) => {
+    if (players[id]) players[id].color = color;
+    updatePlayerList();
   });
 
   socket.on('player_left', ({ id }) => {
