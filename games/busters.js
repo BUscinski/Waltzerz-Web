@@ -279,7 +279,7 @@ module.exports = function setupBusters(ns) {
       console.log(`Busters host joined room: ${roomCode}`);
     });
 
-    socket.on("join_room", ({ code, name, seed }) => {
+    socket.on("join_room", ({ code, name }) => {
       const uc = code?.trim().toUpperCase();
       if (!rooms[uc]) {
         socket.emit("room_error", { error: `Room "${uc}" not found. Check the code and try again.` });
@@ -291,55 +291,70 @@ module.exports = function setupBusters(ns) {
       const r = rm();
       if (r.state.players.find(p => p.id === socket.id)) return;
 
-      const color = randomColor();
-      const player = { id: socket.id, name, color, seed: seed || "", promptOptions: null };
+      // No color until they submit a topic
+      const player = { id: socket.id, name, color: null, seed: null, promptOptions: null, ready: false };
       r.state.players.push(player);
-      console.log(`Busters [${roomCode}]: ${name} joined with seed "${seed}" (#${r.state.players.length})`);
+      console.log(`Busters [${roomCode}]: ${name} joined (#${r.state.players.length})`);
 
-      r.emit("player_joined", { id: socket.id, name, color });
+      r.emit("player_joined", { id: socket.id, name }); // no color yet
 
       socket.emit("game_state", {
         phase: r.state.phase,
-        players: r.state.players.map(({ id, name, color }) => ({ id, name, color })),
+        players: r.state.players.map(({ id, name, color, ready }) => ({ id, name, color, ready })),
         prompterIndex: r.state.prompterIndex,
         prompterName: r.prompter()?.name ?? null,
         currentPrompt: r.state.currentPrompt,
         answeredIds: Object.keys(r.state.answers),
       });
-
-      // Generate prompts in the background immediately on join
-      if (seed) {
-        generatePrompts(seed)
-          .then(prompts => {
-            // Player may have left before prompts came back
-            const p = r.state.players.find(p => p.id === socket.id);
-            if (!p) return;
-            p.promptOptions = prompts;
-            console.log(`Prompts ready for ${name} [${roomCode}]:`, prompts);
-
-            // If it's already this player's turn and we're waiting on them, advance now
-            if (r.state.phase === "prompting" && r.prompter()?.id === socket.id) {
-              r.state.phase = "selecting";
-              r.state.promptOptions = prompts;
-              r.state.currentSeed = seed;
-              const sock = ns.sockets.get(socket.id);
-              if (sock) sock.emit("phase_selecting", { prompts });
-              r.emit("phase_selecting_wait", { prompterName: name });
-            }
-          })
-          .catch(e => {
-            console.error(`Prompt generation failed for ${name}:`, e);
-            const p = r.state.players.find(p => p.id === socket.id);
-            if (p) p.promptOptions = []; // empty = failed, toPrompting will handle it
-          });
-      }
-
-      if (r.state.players.length === 1 && r.state.phase === "lobby") {
-        r.toPrompting();
-      }
     });
 
-    // Fallback: only used if prompt generation failed at join time
+    socket.on("submit_topic", ({ seed }) => {
+      const r = rm();
+      if (!r || r.state.phase !== "lobby") return;
+      const player = r.state.players.find(p => p.id === socket.id);
+      if (!player || player.ready) return;
+
+      // Assign color and mark ready immediately
+      const color = randomColor();
+      player.color = color;
+      player.seed = seed;
+      player.ready = true;
+      console.log(`Busters [${roomCode}]: ${player.name} submitted topic "${seed}"`);
+      r.emit("player_ready", { id: socket.id, color });
+
+      // Generate prompts in the background
+      generatePrompts(seed)
+        .then(prompts => {
+          const p = r.state.players.find(p => p.id === socket.id);
+          if (!p) return;
+          p.promptOptions = prompts;
+          console.log(`Prompts ready for ${player.name} [${roomCode}]`);
+          // If game started and it's already their turn waiting on them
+          if (r.state.phase === "prompting" && r.prompter()?.id === socket.id) {
+            r.state.phase = "selecting";
+            r.state.promptOptions = prompts;
+            r.state.currentSeed = seed;
+            const sock = ns.sockets.get(socket.id);
+            if (sock) sock.emit("phase_selecting", { prompts });
+            r.emit("phase_selecting_wait", { prompterName: player.name });
+          }
+        })
+        .catch(e => {
+          console.error(`Prompt generation failed for ${player.name}:`, e);
+          const p = r.state.players.find(p => p.id === socket.id);
+          if (p) p.promptOptions = [];
+        });
+    });
+
+    socket.on("start_game", () => {
+      const r = rm();
+      if (!r || r.state.phase !== "lobby") return;
+      if (r.state.players.length === 0) return;
+      if (!r.state.players.every(p => p.ready)) return;
+      r.toPrompting();
+    });
+
+    // Fallback: only used if prompt generation failed at topic-submit time
     socket.on("submit_seed", async ({ seed }) => {
       const r = rm();
       if (!r || r.state.phase !== "prompting") return;

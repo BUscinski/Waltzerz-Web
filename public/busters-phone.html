@@ -66,10 +66,20 @@
       <input type="text" id="room-input" placeholder="Room code (e.g. XKQF)" maxlength="4"
         style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center" />
       <input type="text" id="name-input" placeholder="Your name" maxlength="20" />
-      <input type="text" id="seed-input" placeholder="Your topic (e.g. awkward dates, pirates...)" maxlength="80" />
-      <p style="color:#aaa;font-size:13px;text-align:center;margin:-4px 0 12px">The AI will turn your topic into a prompt when it's your turn.</p>
       <div id="error-msg" style="color:#e94560;text-align:center;font-size:15px;min-height:20px;margin-bottom:8px"></div>
       <button class="primary" id="join-btn">Join Game</button>
+    </div>
+  </div>
+
+  <!-- TOPIC: submitted after joining, before game starts -->
+  <div id="screen-topic" class="screen">
+    <h1>Busters</h1>
+    <div class="card">
+      <h2>Pick a topic 🎲</h2>
+      <p style="text-align:center;color:#aaa;margin:0 0 16px">Give the AI a theme and it'll create a prompt for your round.</p>
+      <input type="text" id="seed-input" placeholder="e.g. awkward dates, office life, pirates..." maxlength="80" />
+      <div id="topic-error" style="color:#e94560;text-align:center;font-size:14px;min-height:18px;margin-bottom:8px"></div>
+      <button class="primary" id="topic-submit-btn">Submit Topic</button>
     </div>
   </div>
 
@@ -195,14 +205,13 @@
         ? urlRoom.toUpperCase()
         : document.getElementById('room-input').value.trim().toUpperCase();
       myName = document.getElementById('name-input').value.trim();
-      const seed = document.getElementById('seed-input').value.trim();
-      if (!code || !myName || !seed) {
-        document.getElementById('error-msg').textContent = 'Please fill in all three fields.';
+      if (!code || !myName) {
+        document.getElementById('error-msg').textContent = 'Please fill in your name.';
         return;
       }
       document.getElementById('join-btn').disabled = true;
       document.getElementById('error-msg').textContent = '';
-      socket.emit('join_room', { code, name: myName, seed });
+      socket.emit('join_room', { code, name: myName });
     };
 
     socket.on('room_error', ({ error }) => {
@@ -212,10 +221,25 @@
 
     socket.on('player_joined', ({ id }) => {
       if (id === socket.id) {
-        showScreen('waiting');
-        document.getElementById('waiting-msg').textContent = 'Joined! Waiting to start...';
+        // Joined — now ask for topic before game starts
+        showScreen('topic');
+        document.getElementById('seed-input').value = '';
+        document.getElementById('seed-input').focus();
       }
     });
+
+    document.getElementById('topic-submit-btn').onclick = () => {
+      const seed = document.getElementById('seed-input').value.trim();
+      if (!seed) {
+        document.getElementById('topic-error').textContent = 'Please enter a topic.';
+        return;
+      }
+      document.getElementById('topic-submit-btn').disabled = true;
+      document.getElementById('topic-error').textContent = '';
+      socket.emit('submit_topic', { seed });
+      showScreen('waiting');
+      document.getElementById('waiting-msg').textContent = 'Topic submitted! Waiting for the host to start...';
+    };
 
     // ── State restore on reconnect ────────────────────────────────────────────
 
@@ -403,6 +427,8 @@
       document.getElementById('name-input').value = '';
       document.getElementById('join-btn').disabled = false;
       document.getElementById('error-msg').textContent = '';
+      document.getElementById('topic-submit-btn').disabled = false;
+      document.getElementById('topic-error').textContent = '';
       showScreen('join');
     });
   </script>
