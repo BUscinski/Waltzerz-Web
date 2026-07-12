@@ -212,7 +212,7 @@
 
     const savedCode = sessionStorage.getItem(ROOM_KEY);
     if (savedCode) {
-      applyRoomCode(savedCode, `/phone.html?room=${savedCode}`);
+      applyRoomCode(savedCode, `/waltzerz-phone.html?room=${savedCode}`);
     } else {
       fetch('/api/room?game=waltzers')
         .then(r => r.json())

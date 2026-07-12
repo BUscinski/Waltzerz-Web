@@ -1,4 +1,3 @@
-console.log("SERVER FILE IS RUNNING");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -16,7 +15,7 @@ const { generateCode } = require("./lib/rooms");
 const GAME_PHONE_PAGE = {
   busters: "busters-phone",
   shakeweight: "shakeweight-phone",
-  waltzers: "phone",
+  waltzers: "waltzerz-phone",
 };
 
 app.get("/api/room", (req, res) => {
