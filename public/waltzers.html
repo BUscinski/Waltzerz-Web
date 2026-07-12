@@ -34,6 +34,49 @@
       font-size: 22px; font-weight: bold; margin: 8px 0;
     }
     .player-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
+
+    /* ── Debug menu ── */
+    #debug-toggle {
+      position: fixed; right: 0; top: 50%;
+      transform: translateY(-50%);
+      background: #0f3460; color: #aaa; border: none;
+      padding: 10px 6px; border-radius: 6px 0 0 6px;
+      cursor: pointer; font-size: 12px; writing-mode: vertical-rl;
+      letter-spacing: 1px; z-index: 100;
+    }
+    #debug-toggle:hover { background: #1a2a5e; color: #eee; }
+
+    #debug-panel {
+      position: fixed; right: -260px; top: 0; height: 100%;
+      width: 260px; background: #0d1b2a; border-left: 2px solid #0f3460;
+      padding: 20px 16px; z-index: 99;
+      transition: right 0.25s ease;
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    #debug-panel.open { right: 0; }
+    #debug-panel h3 { color: #e94560; margin: 0; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; }
+    #debug-panel label { color: #aaa; font-size: 13px; display: block; margin-bottom: 4px; }
+
+    .debug-row { display: flex; gap: 8px; }
+    .debug-row button {
+      flex: 1; padding: 10px; font-size: 14px;
+      background: #16213e; color: #eee; border: 1px solid #0f3460;
+      border-radius: 6px; cursor: pointer;
+    }
+    .debug-row button:hover { background: #1a2a5e; }
+    .debug-row button.active { background: #e94560; border-color: #e94560; color: #fff; }
+
+    input[type="range"] {
+      width: 100%; accent-color: #e94560; cursor: pointer;
+    }
+    #tempo-display { color: #e94560; font-size: 20px; font-weight: bold; text-align: center; }
+
+    /* ── Footer credit ── */
+    footer {
+      text-align: center; color: #555; font-size: 12px;
+      padding: 20px; margin-top: 10px;
+    }
+    footer a { color: #555; }
   </style>
 </head>
 <body>
@@ -60,6 +103,37 @@
       </div>
     </div>
   </div>
+
+  <!-- Debug toggle button -->
+  <button id="debug-toggle">DEBUG</button>
+
+  <!-- Debug panel -->
+  <div id="debug-panel">
+    <h3>🎵 Audio Debug</h3>
+
+    <div>
+      <label>Playback</label>
+      <div class="debug-row">
+        <button id="audio-play">▶ Play</button>
+        <button id="audio-stop">■ Stop</button>
+      </div>
+    </div>
+
+    <div>
+      <label>Tempo</label>
+      <div id="tempo-display">1.00×</div>
+      <input type="range" id="tempo-slider" min="0.5" max="2.0" step="0.01" value="1.0" />
+      <div style="display:flex;justify-content:space-between;color:#555;font-size:11px;margin-top:2px">
+        <span>0.5×</span><span>1.0×</span><span>2.0×</span>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Music: <a href="https://incompetech.com" target="_blank">Kevin MacLeod</a> —
+    "Grand Dark Waltz Trio Vivace" — Licensed under
+    <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a>
+  </footer>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
@@ -135,6 +209,62 @@
     };
 
     document.getElementById('resetGame').onclick = () => socket.emit('reset');
+
+    // ── Audio ─────────────────────────────────────────────────────────────────
+
+    let audioCtx = null;
+    let audioBuffer = null;
+    let audioSource = null;
+
+    async function loadAudio() {
+      if (audioBuffer) return;
+      audioCtx = new AudioContext();
+      const resp = await fetch('/assets/audio/Grand Dark Waltz Trio Vivace.ogg');
+      const arrayBuf = await resp.arrayBuffer();
+      audioBuffer = await audioCtx.decodeAudioData(arrayBuf);
+    }
+
+    function playAudio() {
+      if (!audioBuffer) return;
+      stopAudio();
+      audioSource = audioCtx.createBufferSource();
+      audioSource.buffer = audioBuffer;
+      audioSource.loop = true;
+      audioSource.playbackRate.value = parseFloat(document.getElementById('tempo-slider').value);
+      audioSource.connect(audioCtx.destination);
+      audioSource.start();
+      document.getElementById('audio-play').classList.add('active');
+    }
+
+    function stopAudio() {
+      if (audioSource) {
+        audioSource.stop();
+        audioSource.disconnect();
+        audioSource = null;
+      }
+      document.getElementById('audio-play').classList.remove('active');
+    }
+
+    document.getElementById('audio-play').onclick = async () => {
+      await loadAudio();
+      // AudioContext requires a user gesture to start — resume if suspended
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      playAudio();
+    };
+
+    document.getElementById('audio-stop').onclick = stopAudio;
+
+    document.getElementById('tempo-slider').oninput = (e) => {
+      const rate = parseFloat(e.target.value);
+      document.getElementById('tempo-display').textContent = rate.toFixed(2) + '×';
+      if (audioSource) audioSource.playbackRate.value = rate;
+    };
+
+    // ── Debug panel toggle ────────────────────────────────────────────────────
+
+    document.getElementById('debug-toggle').onclick = () => {
+      document.getElementById('debug-panel').classList.toggle('open');
+    };
 
     function renderPlayers() {
       if (Object.keys(players).length === 0) {
