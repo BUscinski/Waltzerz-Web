@@ -103,6 +103,7 @@ module.exports = function setupWaltzers(ns) {
       if (!player || player.out) return;
       player.out = true;
       r.emit("player_out", { id: socket.id, name: player.name });
+      // TODO: trigger elimination SFX on host here (e.g. emit a play_sfx event or call an audio helper)
       console.log(`Waltzers [${roomCode}]: ${player.name} is out`);
 
       const alive = Object.values(r.state.players).filter(p => !p.out);
