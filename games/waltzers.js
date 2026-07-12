@@ -1,11 +1,45 @@
 const { releaseCode } = require("../lib/rooms");
 
+function randomColor() {
+  return "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0");
+}
+
 module.exports = function setupWaltzers(ns) {
-  const rooms = {}; // roomCode → { players }
+  const rooms = {};
 
   function initRoom(roomCode) {
     const emit = (...args) => ns.to(roomCode).emit(...args);
-    const room = { players: {}, emit };
+
+    const state = {
+      players: {},
+      phase: "slow",
+      timer: null,
+      running: false,
+      config: { minTime: 7, maxTime: 20, slowMult: 10, fastMult: 22 },
+    };
+
+    function scheduleNextPhase() {
+      const { minTime, maxTime } = state.config;
+      const delay = (minTime + Math.random() * (maxTime - minTime)) * 1000;
+      state.timer = setTimeout(togglePhase, delay);
+    }
+
+    function togglePhase() {
+      if (!state.running) return;
+      state.phase = state.phase === "slow" ? "fast" : "slow";
+      const multiplier = state.phase === "slow" ? state.config.slowMult : state.config.fastMult;
+      emit("phase_change", { phase: state.phase, multiplier });
+      console.log(`Waltzers [${roomCode}]: phase → ${state.phase} (×${multiplier})`);
+      scheduleNextPhase();
+    }
+
+    function stop() {
+      state.running = false;
+      clearTimeout(state.timer);
+      state.timer = null;
+    }
+
+    const room = { state, emit, scheduleNextPhase, stop };
     rooms[roomCode] = room;
     return room;
   }
@@ -31,38 +65,75 @@ module.exports = function setupWaltzers(ns) {
       roomCode = uc;
       socket.join(roomCode);
       const r = rm();
-      r.players[socket.id] = { name, out: false };
-      r.emit("player_joined", { id: socket.id, name });
+      const color = randomColor();
+      r.state.players[socket.id] = { name, color, out: false };
+      r.emit("player_joined", { id: socket.id, name, color });
+      console.log(`Waltzers [${roomCode}]: ${name} joined`);
     });
 
-    socket.on("imu", data => rm()?.emit("imu_broadcast", { id: socket.id, data }));
-
-    socket.on("jerk", data => {
+    socket.on("start_game", () => {
       const r = rm();
       if (!r) return;
-      if (r.players[socket.id]) r.players[socket.id].out = true;
-      r.emit("player_out", { id: socket.id });
-      r.emit("jerk_broadcast", { id: socket.id, ...data });
+      for (const id in r.state.players) r.state.players[id].out = false;
+      r.state.phase = "slow";
+      r.state.running = true;
+      const mult = r.state.config.slowMult;
+      r.emit("game_started", { phase: "slow", multiplier: mult });
+      r.scheduleNextPhase();
+      console.log(`Waltzers [${roomCode}]: game started`);
     });
 
-    socket.on("update_thresholds", data => rm()?.emit("update_thresholds", data));
+    socket.on("stop_game", () => {
+      const r = rm();
+      if (!r) return;
+      r.stop();
+      r.emit("game_stopped");
+    });
+
+    socket.on("phase_config", ({ minTime, maxTime, slowMult, fastMult }) => {
+      const r = rm();
+      if (!r) return;
+      r.state.config = { minTime, maxTime, slowMult, fastMult };
+    });
+
+    socket.on("player_hit", () => {
+      const r = rm();
+      if (!r || !r.state.running) return;
+      const player = r.state.players[socket.id];
+      if (!player || player.out) return;
+      player.out = true;
+      r.emit("player_out", { id: socket.id, name: player.name });
+      console.log(`Waltzers [${roomCode}]: ${player.name} is out`);
+
+      const alive = Object.values(r.state.players).filter(p => !p.out);
+      if (alive.length <= 1) {
+        r.stop();
+        r.emit("game_over", { winner: alive[0]?.name ?? null });
+        console.log(`Waltzers [${roomCode}]: game over — winner: ${alive[0]?.name ?? "none"}`);
+      }
+    });
 
     socket.on("reset", () => {
       const r = rm();
       if (!r) return;
-      for (const id in r.players) r.players[id].out = false;
+      r.stop();
+      r.state.phase = "slow";
+      for (const id in r.state.players) r.state.players[id].out = false;
       r.emit("reset");
     });
 
     socket.on("disconnect", () => {
       const r = rm();
-      if (!r || !r.players[socket.id]) return;
-      r.emit("player_left", { id: socket.id });
-      delete r.players[socket.id];
+      if (!r || !r.state.players[socket.id]) return;
+      const { name } = r.state.players[socket.id];
+      r.emit("player_left", { id: socket.id, name });
+      delete r.state.players[socket.id];
+      console.log(`Waltzers [${roomCode}]: ${name} disconnected`);
 
-      if (Object.keys(r.players).length === 0) {
+      if (Object.keys(r.state.players).length === 0) {
         setTimeout(() => {
-          if (rooms[roomCode] && Object.keys(rooms[roomCode].players).length === 0) {
+          if (rooms[roomCode] && Object.keys(rooms[roomCode].state.players).length === 0) {
+            rooms[roomCode].stop();
             delete rooms[roomCode];
             releaseCode(roomCode);
             console.log(`Waltzers room ${roomCode} cleaned up`);

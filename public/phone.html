@@ -2,7 +2,7 @@
 <html>
 <head>
   <title>Waltzers Controller</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -30,27 +30,50 @@
       border-radius: 8px; cursor: pointer;
     }
 
+    .hidden { display: none !important; }
+
+    /* ── Waiting screen ── */
+    #screen-waiting {
+      width: 100%; max-width: 440px;
+      text-align: center; padding-top: 40px;
+    }
+    #waiting-msg { color: #aaa; font-size: 20px; margin: 0; line-height: 1.6; }
+
+    /* ── Playing screen ── */
+    #screen-playing { width: 100%; max-width: 440px; }
+
+    #phase-banner {
+      text-align: center; font-size: 28px; font-weight: bold;
+      padding: 16px; border-radius: 10px; margin-bottom: 16px;
+      transition: background 0.8s, color 0.8s;
+      background: #16213e; color: #aaa;
+    }
+    #phase-banner.slow { background: #16213e; color: #aaa; }
+    #phase-banner.fast { background: #e94560; color: #fff; }
+
+    #you-status {
+      text-align: center; font-size: 36px; font-weight: bold;
+      margin: 16px 0; color: #eee;
+    }
+    #you-status.out { color: #e94560; }
+
+    /* ── Debug data ── */
     .data-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px;
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 4px;
     }
     .data-item {
-      background: #0f3460; border-radius: 8px; padding: 12px;
+      background: #0f3460; border-radius: 8px; padding: 10px;
       text-align: center;
     }
-    .data-label { font-size: 12px; color: #aaa; margin-bottom: 4px; }
-    .data-value { font-size: 22px; font-weight: bold; color: #e94560; }
-
-    #jerk-status {
-      width: 100%; max-width: 440px;
-      font-size: 20px; font-weight: bold; color: #e94560;
-      text-align: center; min-height: 28px; margin-top: 8px;
-    }
+    .data-label { font-size: 11px; color: #aaa; margin-bottom: 2px; }
+    .data-value { font-size: 18px; font-weight: bold; color: #e94560; }
   </style>
 </head>
 <body>
   <h1>Waltzers</h1>
 
-  <div class="card" id="join-card">
+  <!-- JOIN -->
+  <div id="screen-join" class="card">
     <div id="room-display" style="text-align:center;margin-bottom:16px;display:none">
       <span style="color:#aaa;font-size:13px">Room</span>
       <div id="room-code-show" style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#e94560"></div>
@@ -59,27 +82,33 @@
       style="text-transform:uppercase;letter-spacing:4px;font-size:22px;text-align:center" />
     <input type="text" id="name" placeholder="Your name" />
     <p id="join-error" style="color:#e94560;text-align:center;font-size:14px;min-height:18px;margin:0 0 8px"></p>
-    <button class="primary" id="join">Join Game</button>
+    <button class="primary" id="join-btn">Join Game</button>
   </div>
 
-  <div class="card">
-    <div class="data-grid">
-      <div class="data-item"><div class="data-label">Jerk X</div><div class="data-value" id="x">--</div></div>
-      <div class="data-item"><div class="data-label">Jerk Y</div><div class="data-value" id="y">--</div></div>
-      <div class="data-item"><div class="data-label">Jerk Z</div><div class="data-value" id="z">--</div></div>
-      <div class="data-item"><div class="data-label">Pitch</div><div class="data-value" id="pitch">--</div></div>
-      <div class="data-item"><div class="data-label">Roll</div><div class="data-value" id="roll">--</div></div>
-      <div class="data-item"><div class="data-label">Yaw</div><div class="data-value" id="yaw">--</div></div>
+  <!-- WAITING -->
+  <div id="screen-waiting" class="hidden">
+    <p id="waiting-msg">Joined! Waiting for host to start...</p>
+  </div>
+
+  <!-- PLAYING -->
+  <div id="screen-playing" class="hidden">
+    <div id="phase-banner">WAITING</div>
+    <div id="you-status">—</div>
+    <div class="card">
+      <div class="data-grid">
+        <div class="data-item"><div class="data-label">Jerk Mag</div><div class="data-value" id="d-jmag">--</div></div>
+        <div class="data-item"><div class="data-label">Threshold</div><div class="data-value" id="d-thresh">--</div></div>
+        <div class="data-item"><div class="data-label">Noise Floor</div><div class="data-value" id="d-noise">--</div></div>
+        <div class="data-item"><div class="data-label">Multiplier</div><div class="data-value" id="d-mult">--</div></div>
+      </div>
     </div>
   </div>
-
-  <div id="jerk-status"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io('/waltzers');
 
-    // Room code from URL
+    // ── Room code from URL ────────────────────────────────────────────────────
     const urlRoom = new URLSearchParams(window.location.search).get('room');
     if (urlRoom) {
       const code = urlRoom.toUpperCase();
@@ -88,123 +117,198 @@
       document.getElementById('room-input').style.display = 'none';
     }
 
-    socket.on('room_error', ({ error }) => {
-      document.getElementById('join-error').textContent = error;
-      document.getElementById('join').disabled = false;
-    });
-
-    socket.on('update_thresholds', ({ accel, rot }) => {
-      ACCEL_JERK_THRESHOLD = accel;
-      ROT_JERK_THRESHOLD = rot;
-    });
-
-    socket.on('reset', () => {
-      document.getElementById('jerk-status').textContent = '';
-      clearTimeout(jerkTimeout);
-      isJerkDetected = false;
-    });
-
-    const FRAME_HISTORY = 10;
-    let accelXHistory = [], accelYHistory = [], accelZHistory = [];
-    let pitchHistory = [], rollHistory = [], yawHistory = [];
-
-    function average(arr) {
-      return arr.length === 0 ? 0 : arr.reduce((a, b) => a + b, 0) / arr.length;
-    }
-    function maintainHistory(arr, value) {
-      arr.push(value);
-      if (arr.length > FRAME_HISTORY) arr.shift();
+    function showScreen(id) {
+      ['screen-join', 'screen-waiting', 'screen-playing'].forEach(s =>
+        document.getElementById(s).classList.toggle('hidden', s !== id)
+      );
     }
 
-    let prevTime = null, prevSmoothed = null;
-    let jerkTimeout, isJerkDetected = false;
-    let ACCEL_JERK_THRESHOLD = 50;
-    let ROT_JERK_THRESHOLD = 500;
+    // ── Calibration ───────────────────────────────────────────────────────────
+    let noiseFloor = null;
+    let calibSamples = [];
+    let calibrating = false;
 
-    document.getElementById('join').onclick = async () => {
+    function startCalibration() {
+      calibSamples = [];
+      calibrating = true;
+      setTimeout(finishCalibration, 2500);
+    }
+
+    function finishCalibration() {
+      if (!calibrating) return;
+      calibrating = false;
+      if (calibSamples.length < 5) { noiseFloor = 50; return; }
+      const mean = calibSamples.reduce((a, b) => a + b, 0) / calibSamples.length;
+      const variance = calibSamples.reduce((s, x) => s + (x - mean) ** 2, 0) / calibSamples.length;
+      noiseFloor = mean + 3 * Math.sqrt(variance);
+      document.getElementById('d-noise').textContent = noiseFloor.toFixed(1);
+      console.log('Noise floor calibrated:', noiseFloor.toFixed(2));
+    }
+
+    // ── Detection state ───────────────────────────────────────────────────────
+    let currentMult = 10;
+    let targetMult = 10;
+    let transitionStart = null;
+    const TRANSITION_MS = 1000;
+    let lastHitTime = 0;
+    const DEBOUNCE_MS = 400;
+    let gameRunning = false;
+    let isOut = false;
+    let myId = null;
+
+    function getLiveMult() {
+      if (transitionStart === null) return currentMult;
+      const t = Math.min((Date.now() - transitionStart) / TRANSITION_MS, 1);
+      const m = currentMult + (targetMult - currentMult) * t;
+      if (t >= 1) { currentMult = targetMult; transitionStart = null; }
+      return m;
+    }
+
+    // ── IMU ───────────────────────────────────────────────────────────────────
+    const HISTORY = 5;
+    let aXH = [], aYH = [], aZH = [];
+    let prevTime = null, prevSm = null;
+
+    function avg(arr) { return arr.length ? arr.reduce((a, b) => a + b) / arr.length : 0; }
+    function push(arr, v) { arr.push(v); if (arr.length > HISTORY) arr.shift(); }
+
+    function startMotion() {
+      window.addEventListener('devicemotion', (event) => {
+        const raw = {
+          x: event.acceleration?.x ?? 0,
+          y: event.acceleration?.y ?? 0,
+          z: event.acceleration?.z ?? 0,
+        };
+
+        push(aXH, raw.x); push(aYH, raw.y); push(aZH, raw.z);
+        const sm = { x: avg(aXH), y: avg(aYH), z: avg(aZH) };
+        const t = event.timeStamp;
+
+        if (prevTime !== null && prevSm !== null) {
+          const dt = (t - prevTime) / 1000;
+          if (dt > 0 && dt < 0.1) {
+            const jx = (sm.x - prevSm.x) / dt;
+            const jy = (sm.y - prevSm.y) / dt;
+            const jz = (sm.z - prevSm.z) / dt;
+            const jMag = Math.sqrt(jx**2 + jy**2 + jz**2);
+
+            if (calibrating) {
+              calibSamples.push(jMag);
+            } else {
+              const mult = getLiveMult();
+              const threshold = noiseFloor != null ? noiseFloor * mult : Infinity;
+
+              document.getElementById('d-jmag').textContent = jMag.toFixed(1);
+              document.getElementById('d-thresh').textContent = isFinite(threshold) ? threshold.toFixed(1) : '—';
+              document.getElementById('d-mult').textContent = mult.toFixed(1);
+
+              const now = Date.now();
+              if (gameRunning && !isOut && noiseFloor != null
+                  && jMag > threshold && now - lastHitTime > DEBOUNCE_MS) {
+                lastHitTime = now;
+                socket.emit('player_hit');
+                navigator.vibrate?.(200);
+              }
+            }
+          }
+        }
+
+        prevTime = t;
+        prevSm = { ...sm };
+      });
+    }
+
+    // ── Join ──────────────────────────────────────────────────────────────────
+    document.getElementById('join-btn').onclick = async () => {
       const code = urlRoom
         ? urlRoom.toUpperCase()
         : document.getElementById('room-input').value.trim().toUpperCase();
       const name = document.getElementById('name').value.trim();
       if (!code || !name) return;
-      document.getElementById('join').disabled = true;
+
+      document.getElementById('join-btn').disabled = true;
       document.getElementById('join-error').textContent = '';
-      socket.emit('join_room', { code, name });
 
       if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        await DeviceMotionEvent.requestPermission();
+        try { await DeviceMotionEvent.requestPermission(); }
+        catch { document.getElementById('join-error').textContent = 'Motion permission required.'; document.getElementById('join-btn').disabled = false; return; }
       }
 
-      window.addEventListener('devicemotion', (event) => {
-        const raw = {
-          x: event.acceleration.x || 0,
-          y: event.acceleration.y || 0,
-          z: event.acceleration.z || 0,
-          pitch: event.rotationRate.alpha || 0,
-          roll: event.rotationRate.beta || 0,
-          yaw: event.rotationRate.gamma || 0,
-        };
-
-        maintainHistory(accelXHistory, raw.x);
-        maintainHistory(accelYHistory, raw.y);
-        maintainHistory(accelZHistory, raw.z);
-        maintainHistory(pitchHistory, raw.pitch);
-        maintainHistory(rollHistory, raw.roll);
-        maintainHistory(yawHistory, raw.yaw);
-
-        const smoothed = {
-          x: average(accelXHistory), y: average(accelYHistory), z: average(accelZHistory),
-          pitch: average(pitchHistory), roll: average(rollHistory), yaw: average(yawHistory),
-        };
-
-        const currentTime = event.timeStamp;
-        if (prevTime !== null && prevSmoothed !== null) {
-          const dt = (currentTime - prevTime) / 1000;
-          if (dt > 0) {
-            const jx = (smoothed.x - prevSmoothed.x) / dt;
-            const jy = (smoothed.y - prevSmoothed.y) / dt;
-            const jz = (smoothed.z - prevSmoothed.z) / dt;
-            const jAccel = Math.sqrt(jx**2 + jy**2 + jz**2);
-
-            const jp = (smoothed.pitch - prevSmoothed.pitch) / dt;
-            const jr = (smoothed.roll - prevSmoothed.roll) / dt;
-            const jyw = (smoothed.yaw - prevSmoothed.yaw) / dt;
-            const jRot = Math.sqrt(jp**2 + jr**2 + jyw**2);
-
-            if (!isJerkDetected) {
-              document.getElementById('x').textContent = jx.toFixed(1);
-              document.getElementById('y').textContent = jy.toFixed(1);
-              document.getElementById('z').textContent = jz.toFixed(1);
-              document.getElementById('pitch').textContent = jp.toFixed(1);
-              document.getElementById('roll').textContent = jr.toFixed(1);
-              document.getElementById('yaw').textContent = jyw.toFixed(1);
-            }
-
-            if (jAccel > ACCEL_JERK_THRESHOLD && !isJerkDetected) {
-              document.getElementById('jerk-status').textContent = `Accel jerk: ${jAccel.toFixed(1)}`;
-              clearTimeout(jerkTimeout);
-              jerkTimeout = setTimeout(() => { document.getElementById('jerk-status').textContent = ''; }, 2000);
-              socket.emit('jerk', { type: 'accel', value: jAccel });
-              navigator.vibrate?.(200);
-              isJerkDetected = true;
-            }
-
-            if (jRot > ROT_JERK_THRESHOLD && !isJerkDetected) {
-              document.getElementById('jerk-status').textContent = `Rot jerk: ${jRot.toFixed(1)}`;
-              clearTimeout(jerkTimeout);
-              jerkTimeout = setTimeout(() => { document.getElementById('jerk-status').textContent = ''; }, 2000);
-              socket.emit('jerk', { type: 'rot', value: jRot });
-              navigator.vibrate?.(200);
-              isJerkDetected = true;
-            }
-          }
-        }
-
-        prevTime = currentTime;
-        prevSmoothed = { ...smoothed };
-        socket.emit('imu', smoothed);
-      });
+      socket.emit('join_room', { code, name });
     };
+
+    socket.on('room_error', ({ error }) => {
+      document.getElementById('join-error').textContent = error;
+      document.getElementById('join-btn').disabled = false;
+    });
+
+    socket.on('player_joined', ({ id }) => {
+      if (id !== socket.id) return;
+      myId = socket.id;
+      startMotion();
+      startCalibration();
+      showScreen('screen-waiting');
+    });
+
+    // ── Game events ───────────────────────────────────────────────────────────
+    socket.on('game_started', ({ phase, multiplier }) => {
+      gameRunning = true;
+      isOut = false;
+      currentMult = multiplier;
+      targetMult = multiplier;
+      transitionStart = null;
+      updatePhase(phase);
+      document.getElementById('you-status').textContent = 'YOU\'RE IN!';
+      document.getElementById('you-status').classList.remove('out');
+      showScreen('screen-playing');
+    });
+
+    socket.on('phase_change', ({ phase, multiplier }) => {
+      targetMult = multiplier;
+      transitionStart = Date.now();
+      updatePhase(phase);
+    });
+
+    socket.on('player_out', ({ id }) => {
+      if (id === socket.id) {
+        isOut = true;
+        gameRunning = false;
+        document.getElementById('you-status').textContent = 'YOU\'RE OUT!';
+        document.getElementById('you-status').classList.add('out');
+        navigator.vibrate?.([200, 100, 200]);
+      }
+    });
+
+    socket.on('game_over', ({ winner }) => {
+      gameRunning = false;
+      if (!isOut) {
+        document.getElementById('you-status').textContent = winner ? `🏆 ${winner} wins!` : 'Game over!';
+      }
+    });
+
+    socket.on('game_stopped', () => {
+      gameRunning = false;
+      showScreen('screen-waiting');
+      document.getElementById('waiting-msg').textContent = 'Game stopped. Waiting for host...';
+    });
+
+    socket.on('reset', () => {
+      gameRunning = false;
+      isOut = false;
+      noiseFloor = null;
+      currentMult = 10; targetMult = 10; transitionStart = null;
+      document.getElementById('join-btn').disabled = false;
+      document.getElementById('join-error').textContent = '';
+      showScreen('screen-join');
+    });
+
+    socket.on('player_left', () => {});
+
+    function updatePhase(phase) {
+      const banner = document.getElementById('phase-banner');
+      banner.textContent = phase === 'fast' ? '⚡ FAST' : '🎵 SLOW';
+      banner.className = phase;
+    }
   </script>
 </body>
 </html>
