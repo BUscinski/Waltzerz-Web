@@ -263,7 +263,12 @@
       updatePhaseDisplay(null);
     });
 
-    document.getElementById('startGame').onclick = () => socket.emit('start_game');
+    document.getElementById('startGame').onclick = async () => {
+      socket.emit('start_game');
+      await loadAudio();
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      playAudio();
+    };
     document.getElementById('stopGame').onclick  = () => socket.emit('stop_game');
     document.getElementById('resetGame').onclick = () => socket.emit('reset');
 
