@@ -275,6 +275,7 @@
     document.getElementById('startGame').onclick = async () => {
       socket.emit('start_game');
       await loadAudio();
+      document.getElementById('tempo-slider').value = parseFloat(document.getElementById('cfg-slow-tempo').value);
       if (audioCtx.state === 'suspended') await audioCtx.resume();
       playAudio();
     };
