@@ -15,7 +15,7 @@ module.exports = function setupWaltzers(ns) {
       phase: "slow",
       timer: null,
       running: false,
-      config: { minTime: 7, maxTime: 20, slowMult: 10, fastMult: 22 },
+      config: { minTime: 7, maxTime: 20, slowMult: 5, fastMult: 15 },
     };
 
     function scheduleNextPhase() {
@@ -53,6 +53,8 @@ module.exports = function setupWaltzers(ns) {
       roomCode = code;
       if (!rooms[roomCode]) initRoom(roomCode);
       socket.join(roomCode);
+      // Send current config so the host debug inputs reflect server defaults
+      socket.emit("room_config", rooms[roomCode].state.config);
       console.log(`Waltzers host joined room: ${roomCode}`);
     });
 

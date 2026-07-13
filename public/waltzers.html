@@ -250,17 +250,26 @@
       rampTempo(targetRate, 1.0);
     });
 
+    socket.on('room_config', ({ minTime, maxTime, slowMult, fastMult }) => {
+      document.getElementById('cfg-min').value = minTime;
+      document.getElementById('cfg-max').value = maxTime;
+      document.getElementById('cfg-slow-mult').value = slowMult;
+      document.getElementById('cfg-fast-mult').value = fastMult;
+    });
+
+    socket.on('game_stopped', () => { updatePhaseDisplay(null); stopAudio(); });
+
     socket.on('game_over', ({ winner }) => {
       document.getElementById('phase-indicator').textContent = winner ? `🏆 ${winner} wins!` : 'Game over!';
       document.getElementById('phase-indicator').style.color = '#e94560';
+      stopAudio();
     });
-
-    socket.on('game_stopped', () => updatePhaseDisplay(null));
 
     socket.on('reset', () => {
       for (const id in players) players[id].out = false;
       renderPlayers();
       updatePhaseDisplay(null);
+      stopAudio();
     });
 
     document.getElementById('startGame').onclick = async () => {
