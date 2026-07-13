@@ -241,7 +241,7 @@
       document.getElementById('join-btn').disabled = false;
     });
 
-    socket.on('player_joined', ({ id }) => {
+    socket.on('player_joined', ({ id, color }) => {
       if (id !== socket.id) return;
       myId = socket.id;
       myColor = color;  // save it
