@@ -10,8 +10,7 @@
       background: #1a1a2e; color: #eee; min-height: 100vh;
       display: flex; flex-direction: column; align-items: center;
     }
-    h1 { color: #e94560; font-size: 32px; margin: 0 0 24px; }
-
+    h1 { color: var(--player-color); font-size: 32px; margin: 0 0 24px; }
     .card {
       background: #16213e; border-radius: 12px; padding: 20px;
       width: 100%; max-width: 440px; margin-bottom: 16px;
@@ -26,7 +25,7 @@
 
     button.primary {
       width: 100%; padding: 16px; font-size: 20px; font-weight: bold;
-      background: #e94560; color: white; border: none;
+      background: var(--player-color); color: white; border: none;
       border-radius: 8px; cursor: pointer;
     }
 
@@ -245,6 +244,8 @@
     socket.on('player_joined', ({ id }) => {
       if (id !== socket.id) return;
       myId = socket.id;
+      myColor = color;  // save it
+      document.documentElement.style.setProperty('--player-color', color);
       startMotion();
       startCalibration();
       showScreen('screen-waiting');
@@ -275,7 +276,7 @@
         gameRunning = false;
         document.getElementById('you-status').textContent = 'YOU\'RE OUT!';
         document.getElementById('you-status').classList.add('out');
-
+        document.documentElement.style.setProperty('--player-color', '#e94560');
         // Haptic: three sharp pulses
         navigator.vibrate?.([100, 50, 100, 50, 300]);
 

@@ -1,7 +1,17 @@
 const { releaseCode } = require("../lib/rooms");
 
 function randomColor() {
-  return "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0");
+  let color;
+  do {
+    const n = Math.floor(Math.random() * 0xffffff);
+    const r = (n >> 16) & 0xff;
+    const g = (n >> 8) & 0xff;
+    const b = n & 0xff;
+    // reject if red-dominant (looks red/orange/pink)
+    if (r > 180 && g < 100 && b < 100) continue;
+    color = '#' + n.toString(16).padStart(6, '0');
+  } while (!color);
+  return color;
 }
 
 module.exports = function setupWaltzers(ns) {
