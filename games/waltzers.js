@@ -79,6 +79,7 @@ module.exports = function setupWaltzers(ns) {
       for (const id in r.state.players) r.state.players[id].out = false;
       r.state.phase = "slow";
       r.state.running = true;
+      r.state.startTime = Date.now();
       const mult = r.state.config.slowMult;
       r.emit("game_started", { phase: "slow", multiplier: mult });
       r.scheduleNextPhase();
@@ -104,7 +105,8 @@ module.exports = function setupWaltzers(ns) {
       const player = r.state.players[socket.id];
       if (!player || player.out) return;
       player.out = true;
-      r.emit("player_out", { id: socket.id, name: player.name });
+      const survivedMs = r.state.startTime ? Date.now() - r.state.startTime : null;
+      r.emit("player_out", { id: socket.id, name: player.name, survivedMs });
       // TODO: trigger elimination SFX on host here (e.g. emit a play_sfx event or call an audio helper)
       console.log(`Waltzers [${roomCode}]: ${player.name} is out`);
 
