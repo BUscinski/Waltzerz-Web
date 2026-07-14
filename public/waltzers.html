@@ -5,12 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     * { box-sizing: border-box; }
-    body { font-family: Arial, sans-serif; margin: 0; background: #1a1a2e; color: #eee; }
+    body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; background: #1a1a2e; color: #eee; }
     .container { max-width: 960px; margin: 0 auto; padding: 20px; }
     h1 { color: #e94560; text-align: center; font-size: 36px; margin-bottom: 20px; }
     h2 { color: #eee; margin: 0 0 12px; border-bottom: 2px solid #e94560; padding-bottom: 8px; }
 
-    .card { background: #16213e; border-radius: 10px; padding: 20px; margin: 14px 0; }
+    .card { background: #16213e; border-radius: 12px; padding: 20px; margin: 14px 0; }
+
+    /* ── QR block (shared layout) ── */
+    .qr-block { text-align: center; }
+    .qr-block p { font-size: 13px; color: #aaa; margin: 0 0 10px; }
+    #qr { display: inline-block; background: #fff; padding: 8px; border-radius: 6px; }
+    .room-code-label { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #e94560; margin-top: 10px; }
+    .room-code-sub { font-size: 12px; color: #aaa; margin: 2px 0 0; }
 
     #qr { text-align: center; margin: 10px 0; }
 
@@ -83,9 +90,12 @@
   <div class="container">
     <h1>Waltzers</h1>
 
-    <div class="card" style="text-align:center">
+    <div class="card qr-block">
       <h2>Scan to Join</h2>
+      <p>Scan with your phone camera to jump in</p>
       <div id="qr"></div>
+      <div class="room-code-label" id="room-code-show">—</div>
+      <p class="room-code-sub">room code</p>
     </div>
 
     <div class="card">
@@ -180,7 +190,7 @@
   </footer>
 
   <script src="/socket.io/socket.io.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script>
     const socket = io('/waltzers');
     const playersDiv = document.getElementById('players');
@@ -192,21 +202,9 @@
     function applyRoomCode(code, phoneUrl) {
       roomCode = code;
       const url = window.location.origin + phoneUrl;
-      QRCode.toCanvas(url, (err, canvas) => {
-        if (!err) {
-          const qrEl = document.getElementById('qr');
-          qrEl.innerHTML = '<div style="font-size:13px;color:#aaa;margin-bottom:6px">Scan to join</div>';
-          qrEl.appendChild(canvas);
-          const codeDiv = document.createElement('div');
-          codeDiv.style.cssText = 'font-size:32px;font-weight:bold;letter-spacing:8px;color:#e94560;margin-top:8px';
-          codeDiv.textContent = code;
-          qrEl.appendChild(codeDiv);
-          const label = document.createElement('p');
-          label.style.cssText = 'font-size:12px;color:#aaa;margin:2px 0 0';
-          label.textContent = 'room code';
-          qrEl.appendChild(label);
-        }
-      });
+      document.getElementById('qr').innerHTML = '';
+      new QRCode(document.getElementById('qr'), { text: url, width: 200, height: 200 });
+      document.getElementById('room-code-show').textContent = code;
       socket.emit('host_room', { roomCode: code });
     }
 
