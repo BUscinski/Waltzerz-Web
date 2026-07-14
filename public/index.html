@@ -1,53 +1,222 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Phone Game Platform</title>
+  <title>Waltzerz — Social Games Platform</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    * { box-sizing: border-box; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #09090f;
+      --bg-card: #12141e;
+      --bg-nav: rgba(9, 9, 15, 0.92);
+      --text: #dde1ee;
+      --text-muted: #6b7280;
+      --accent-blue: #4a9eff;
+      --accent-orange: #ff7b54;
+      --border: rgba(255,255,255,0.07);
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 40px 20px;
-      background: #1a1a2e;
-      color: #eee;
+      font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    h1 { color: #e94560; font-size: 40px; margin-bottom: 8px; }
-    p { color: #aaa; font-size: 18px; margin-bottom: 40px; }
-    .games { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
-    .game-card {
-      background: #16213e;
-      border-radius: 12px;
-      padding: 32px 48px;
-      cursor: pointer;
-      border: 2px solid transparent;
-      transition: border-color 0.15s;
+
+    /* ── Nav ── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--bg-nav);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 40px;
+      height: 56px;
+    }
+    .nav-name {
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
       text-decoration: none;
-      display: block;
-      color: #eee;
     }
-    .game-card:hover { border-color: #e94560; }
-    .game-card h2 { margin: 0 0 8px; font-size: 26px; color: #fff; }
-    .game-card p { margin: 0; font-size: 15px; color: #aaa; }
+    .nav-link {
+      font-size: 14px;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-link:hover { color: var(--text); }
+
+    /* ── Hero ── */
+    .hero {
+      padding: 80px 40px 64px;
+      max-width: 860px;
+    }
+    .eyebrow {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-blue);
+      margin-bottom: 16px;
+    }
+    .hero h1 {
+      font-size: clamp(36px, 6vw, 60px);
+      font-weight: 800;
+      line-height: 1.1;
+      color: #fff;
+      margin-bottom: 20px;
+    }
+    .hero p {
+      font-size: 18px;
+      line-height: 1.7;
+      color: var(--text-muted);
+      max-width: 600px;
+    }
+
+    /* ── Section ── */
+    .section {
+      padding: 0 40px 80px;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-blue);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 32px;
+    }
+
+    /* ── Game cards ── */
+    .games {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .game-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      text-decoration: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: border-color 0.15s, transform 0.15s;
+    }
+    .game-card:hover {
+      border-color: rgba(74, 158, 255, 0.4);
+      transform: translateY(-2px);
+    }
+    .card-tags {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent-orange);
+    }
+    .card-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .card-desc {
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      flex: 1;
+    }
+    .card-arrow {
+      font-size: 13px;
+      color: var(--accent-blue);
+      margin-top: 4px;
+    }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+      padding: 24px 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    footer a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    footer a:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      nav { padding: 0 20px; }
+      .hero { padding: 48px 20px 40px; }
+      .section { padding: 0 20px 60px; }
+      footer { padding: 20px; flex-direction: column; gap: 8px; text-align: center; }
+    }
   </style>
 </head>
 <body>
-  <h1>Phone Game Platform</h1>
-  <p>Choose a game to play:</p>
-  <div class="games">
-    <a class="game-card" href="waltzers.html">
-      <h2>Waltzers</h2>
-      <p>Motion-based elimination</p>
-    </a>
-    <a class="game-card" href="busters.html">
-      <h2>Busters</h2>
-      <p>AI-powered party prompts</p>
-    </a>
-    <a class="game-card" href="shakeweight.html">
-      <h2>Shake Weight</h2>
-      <p>Shake your phone to win</p>
-    </a>
+
+  <nav>
+    <a class="nav-name" href="https://buscinski.github.io">Ben Uscinski</a>
+    <a class="nav-link" href="https://buscinski.github.io/projects.html">← Back to Portfolio</a>
+  </nav>
+
+  <div class="hero">
+    <div class="eyebrow">Social Games</div>
+    <h1>Waltzerz</h1>
+    <p>A platform for phone-based party games designed around casual co-presence — people in the same room, using their own devices to play together.</p>
   </div>
+
+  <div class="section">
+    <div class="section-label">Active Builds</div>
+    <div class="section-title">Choose a Game</div>
+    <div class="games">
+
+      <a class="game-card" href="waltzers.html">
+        <div class="card-tags">Motion / Elimination</div>
+        <div class="card-title">Waltzers</div>
+        <div class="card-desc">Players dance to music with their phones. Move too suddenly when the tempo spikes and you're out. Last one standing wins.</div>
+        <div class="card-arrow">Play →</div>
+      </a>
+
+      <a class="game-card" href="busters.html">
+        <div class="card-tags">AI / Party Prompts</div>
+        <div class="card-title">Busters</div>
+        <div class="card-desc">An AI-powered Quiplash-style prompt generator. Players submit topics, the AI generates questions, and the group votes on the best answers.</div>
+        <div class="card-arrow">Play →</div>
+      </a>
+
+      <a class="game-card" href="shakeweight.html">
+        <div class="card-tags">Motion / Competitive</div>
+        <div class="card-title">Shake Weight</div>
+        <div class="card-desc">Shake your phone harder than everyone else. Simple, silly, surprisingly competitive.</div>
+        <div class="card-arrow">Play →</div>
+      </a>
+
+    </div>
+  </div>
+
+  <footer>
+    <span>Built by <a href="https://buscinski.github.io">Ben Uscinski</a></span>
+    <span>Music: Kevin MacLeod — <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank">CC BY 4.0</a></span>
+  </footer>
+
 </body>
 </html>
