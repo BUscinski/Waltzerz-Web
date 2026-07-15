@@ -1,0 +1,362 @@
+/* =========================================================
+   Design tokens — kept in sync with buscinski.github.io
+   ========================================================= */
+:root {
+  --bg:          #09090f;
+  --surface:     #12141e;
+  --surface-2:   #1a1d2e;
+  --border:      #252840;
+  --text:        #dde1ee;
+  --text-muted:  #7178a0;
+  --accent:      #5eb8ff;
+  --accent-warm: #ff7b54;
+  --danger:      #e94560;   /* game-state: elimination, FAST phase, errors */
+  --radius:      8px;
+  --max-w:       960px;
+  --font:        -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+}
+
+/* =========================================================
+   Reset & base
+   ========================================================= */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+img { max-width: 100%; display: block; }
+
+/* =========================================================
+   Nav
+   ========================================================= */
+nav {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(9, 9, 15, 0.92);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-logo {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--text);
+  letter-spacing: 0.02em;
+}
+
+.nav-links {
+  display: flex;
+  gap: 32px;
+  list-style: none;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+  color: var(--text);
+  text-decoration: none;
+}
+
+/* =========================================================
+   Layout
+   ========================================================= */
+.container {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 20px 24px;
+}
+
+.section-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+
+h1 { font-size: clamp(1.8rem, 4vw, 2.4rem); line-height: 1.15; font-weight: 800; }
+h2 { font-size: 1.2rem; font-weight: 700; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 14px; }
+h3 { font-size: 1rem; font-weight: 700; }
+
+/* =========================================================
+   Page title
+   ========================================================= */
+.page-title {
+  text-align: center;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 20px;
+}
+
+/* =========================================================
+   Card
+   ========================================================= */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 14px 0;
+}
+
+/* =========================================================
+   QR block
+   ========================================================= */
+.qr-block {
+  text-align: center;
+}
+
+.qr-block > p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.qr-block .qr-wrap {
+  display: inline-block;
+  background: #fff;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.room-code-label {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 8px;
+  color: var(--danger);
+  margin-top: 10px;
+}
+
+.room-code-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 2px 0 0;
+}
+
+/* =========================================================
+   Buttons
+   ========================================================= */
+button {
+  font-family: var(--font);
+  font-size: 15px;
+  padding: 10px 22px;
+  border: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #09090f;
+  font-weight: 700;
+}
+button.primary:hover { background: #7fcaff; }
+
+button.danger {
+  background: var(--danger);
+  color: #fff;
+  font-weight: 700;
+}
+button.danger:hover { background: #c73652; }
+
+button.secondary {
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+button.secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* =========================================================
+   Form inputs
+   ========================================================= */
+input[type="text"],
+input[type="number"] {
+  font-family: var(--font);
+  font-size: 15px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus { border-color: var(--accent); }
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* =========================================================
+   Controls row
+   ========================================================= */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* =========================================================
+   Player chips (Busters lobby)
+   ========================================================= */
+.player-chip {
+  display: inline-block;
+  padding: 6px 14px;
+  margin: 4px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+
+/* =========================================================
+   Debug panel — shared across all games
+   ========================================================= */
+#debug-toggle {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface-2);
+  color: var(--text-muted);
+  border: none;
+  border: 1px solid var(--border);
+  border-right: none;
+  padding: 10px 6px;
+  border-radius: 6px 0 0 6px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  writing-mode: vertical-rl;
+  z-index: 100;
+  transition: color 0.15s;
+}
+#debug-toggle:hover { color: var(--text); }
+
+#debug-panel {
+  position: fixed;
+  right: -280px;
+  top: 0;
+  height: 100%;
+  width: 280px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  padding: 20px 16px;
+  z-index: 99;
+  transition: right 0.25s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+#debug-panel.open { right: 0; }
+
+#debug-panel h3 {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-bottom: none;
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+#debug-panel label {
+  color: var(--text-muted);
+  font-size: 12px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.debug-row {
+  display: flex;
+  gap: 8px;
+}
+
+.debug-row button {
+  flex: 1;
+  padding: 8px;
+  font-size: 13px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.debug-row button:hover { border-color: var(--accent); color: var(--accent); }
+.debug-row button.active { background: var(--danger); border-color: var(--danger); color: #fff; }
+
+.debug-number-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.debug-number-row span {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.debug-number-row input[type="number"] {
+  width: 60px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+#debug-panel hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+
+/* =========================================================
+   Footer
+   ========================================================= */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+footer a { color: var(--text-muted); }
+footer a:hover { color: var(--accent); text-decoration: none; }

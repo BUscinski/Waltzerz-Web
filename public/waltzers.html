@@ -3,97 +3,23 @@
 <head>
   <title>Waltzers Host</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; background: #1a1a2e; color: #eee; }
-    .container { max-width: 960px; margin: 0 auto; padding: 20px; }
-    h1 { color: #e94560; text-align: center; font-size: 36px; margin-bottom: 20px; }
-    h2 { color: #eee; margin: 0 0 12px; border-bottom: 2px solid #e94560; padding-bottom: 8px; }
-
-    .card { background: #16213e; border-radius: 12px; padding: 20px; margin: 14px 0; }
-
-    /* ── QR block (shared layout) ── */
-    .qr-block { text-align: center; }
-    .qr-block p { font-size: 13px; color: #aaa; margin: 0 0 10px; }
-    #qr { display: inline-block; background: #fff; padding: 8px; border-radius: 6px; }
-    .room-code-label { font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #e94560; margin-top: 10px; }
-    .room-code-sub { font-size: 12px; color: #aaa; margin: 2px 0 0; }
-
-    #qr { text-align: center; margin: 10px 0; }
-
-    .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; }
-    input[type="number"] {
-      font-size: 15px; padding: 10px 14px;
-      border: 2px solid #0f3460; border-radius: 6px;
-      background: #0f3460; color: #eee; outline: none; width: 160px;
-    }
-    input[type="number"]:focus { border-color: #e94560; }
-    button {
-      font-size: 15px; padding: 10px 22px; border: none;
-      border-radius: 6px; cursor: pointer; background: #e94560; color: white;
-    }
-    button:hover { background: #c73652; }
-    button.secondary { background: #555; }
-    button.secondary:hover { background: #444; }
-
-    .player-entry {
-      display: flex; align-items: center; gap: 10px;
-      font-size: 22px; font-weight: bold; margin: 8px 0;
-    }
+    /* ── Waltzers-specific ── */
+    .player-entry { display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: bold; margin: 8px 0; }
     .player-dot { width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0; }
-
-    /* ── Debug menu ── */
-    #debug-toggle {
-      position: fixed; right: 0; top: 50%;
-      transform: translateY(-50%);
-      background: #0f3460; color: #aaa; border: none;
-      padding: 10px 6px; border-radius: 6px 0 0 6px;
-      cursor: pointer; font-size: 12px; writing-mode: vertical-rl;
-      letter-spacing: 1px; z-index: 100;
-    }
-    #debug-toggle:hover { background: #1a2a5e; color: #eee; }
-
-    #debug-panel {
-      position: fixed; right: -260px; top: 0; height: 100%;
-      width: 260px; background: #0d1b2a; border-left: 2px solid #0f3460;
-      padding: 20px 16px; z-index: 99;
-      transition: right 0.25s ease;
-      display: flex; flex-direction: column; gap: 16px;
-    }
-    #debug-panel.open { right: 0; }
-    #debug-panel h3 { color: #e94560; margin: 0; font-size: 14px; letter-spacing: 1px; text-transform: uppercase; }
-    #debug-panel label { color: #aaa; font-size: 13px; display: block; margin-bottom: 4px; }
-
-    .debug-row { display: flex; gap: 8px; }
-    .debug-row button {
-      flex: 1; padding: 10px; font-size: 14px;
-      background: #16213e; color: #eee; border: 1px solid #0f3460;
-      border-radius: 6px; cursor: pointer;
-    }
-    .debug-row button:hover { background: #1a2a5e; }
-    .debug-row button.active { background: #e94560; border-color: #e94560; color: #fff; }
-
-    input[type="range"] {
-      width: 100%; accent-color: #e94560; cursor: pointer;
-    }
-    #tempo-display { color: #e94560; font-size: 20px; font-weight: bold; text-align: center; }
-
-    /* ── Footer credit ── */
-    footer {
-      text-align: center; color: #555; font-size: 12px;
-      padding: 20px; margin-top: 10px;
-    }
-    footer a { color: #555; }
+    #tempo-display { color: var(--accent); font-size: 20px; font-weight: bold; text-align: center; }
+    .controls { margin-top: 10px; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Waltzers</h1>
+    <h1 class="page-title">Waltzers</h1>
 
     <div class="card qr-block">
       <h2>Scan to Join</h2>
       <p>Scan with your phone camera to jump in</p>
-      <div id="qr"></div>
+      <div id="qr" class="qr-wrap"></div>
       <div class="room-code-label" id="room-code-show">—</div>
       <p class="room-code-sub">room code</p>
     </div>
@@ -106,7 +32,7 @@
     <div class="card">
       <h2>Game Controls</h2>
       <div class="controls">
-        <button id="startGame">▶ Start Game</button>
+        <button class="primary" id="startGame">▶ Start Game</button>
         <button class="secondary" id="stopGame">■ Stop</button>
         <button class="secondary" id="resetGame">↺ Reset</button>
       </div>
@@ -143,44 +69,35 @@
 
     <div>
       <label>Duration per phase (seconds)</label>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-        <span style="color:#aaa;font-size:12px;white-space:nowrap">Min</span>
-        <input type="number" id="cfg-min" value="7" min="1" max="120"
-          style="width:55px;padding:6px;font-size:14px;background:#16213e;border:1px solid #0f3460;border-radius:4px;color:#eee;outline:none">
-        <span style="color:#aaa;font-size:12px;white-space:nowrap">Max</span>
-        <input type="number" id="cfg-max" value="20" min="1" max="120"
-          style="width:55px;padding:6px;font-size:14px;background:#16213e;border:1px solid #0f3460;border-radius:4px;color:#eee;outline:none">
+      <div class="debug-number-row">
+        <span>Min</span>
+        <input type="number" id="cfg-min" value="7" min="1" max="120">
+        <span>Max</span>
+        <input type="number" id="cfg-max" value="20" min="1" max="120">
       </div>
     </div>
 
     <div>
       <label>Jerk multiplier (× noise floor)</label>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-        <span style="color:#aaa;font-size:12px;white-space:nowrap">Slow</span>
-        <input type="number" id="cfg-slow-mult" value="10" min="1" max="100" step="0.5"
-          style="width:55px;padding:6px;font-size:14px;background:#16213e;border:1px solid #0f3460;border-radius:4px;color:#eee;outline:none">
-        <span style="color:#aaa;font-size:12px;white-space:nowrap">Fast</span>
-        <input type="number" id="cfg-fast-mult" value="22" min="1" max="100" step="0.5"
-          style="width:55px;padding:6px;font-size:14px;background:#16213e;border:1px solid #0f3460;border-radius:4px;color:#eee;outline:none">
+      <div class="debug-number-row">
+        <span>Slow</span>
+        <input type="number" id="cfg-slow-mult" value="10" min="1" max="100" step="0.5">
+        <span>Fast</span>
+        <input type="number" id="cfg-fast-mult" value="22" min="1" max="100" step="0.5">
       </div>
     </div>
 
     <div>
       <label>Audio tempo per phase</label>
-      <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
-        <span style="color:#aaa;font-size:12px;white-space:nowrap">Slow</span>
-        <input type="number" id="cfg-slow-tempo" value="1.0" min="0.5" max="2.0" step="0.05"
-          style="width:55px;padding:6px;font-size:14px;background:#16213e;border:1px solid #0f3460;border-radius:4px;color:#eee;outline:none">
-        <span style="color:#aaa;font-size:12px;white-space:nowrap">Fast</span>
-        <input type="number" id="cfg-fast-tempo" value="2.0" min="0.5" max="2.0" step="0.05"
-          style="width:55px;padding:6px;font-size:14px;background:#16213e;border:1px solid #0f3460;border-radius:4px;color:#eee;outline:none">
+      <div class="debug-number-row">
+        <span>Slow</span>
+        <input type="number" id="cfg-slow-tempo" value="1.0" min="0.5" max="2.0" step="0.05">
+        <span>Fast</span>
+        <input type="number" id="cfg-fast-tempo" value="2.0" min="0.5" max="2.0" step="0.05">
       </div>
     </div>
 
-    <button id="apply-config"
-      style="width:100%;padding:8px;font-size:13px;background:#16213e;color:#eee;border:1px solid #0f3460;border-radius:6px;cursor:pointer;margin-top:4px">
-      Apply Config
-    </button>
+    <button class="secondary" id="apply-config" style="width:100%">Apply Config</button>
   </div>
 
   <footer>
