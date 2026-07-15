@@ -3,66 +3,42 @@
 <head>
   <title>Busters Host</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; background: #1a1a2e; color: #eee; }
-    .container { max-width: 960px; margin: 0 auto; padding: 20px; }
-    h1 { text-align: center; color: #e94560; margin: 0 0 20px; font-size: 36px; }
-
-    .card { background: #16213e; border-radius: 12px; padding: 20px; margin: 14px 0; }
-    #qrcode { display: inline-block; background: white; padding: 8px; border-radius: 6px; }
-
+    /* ── Busters-specific ── */
     .top-row { display: flex; gap: 16px; }
     .qr-card { flex: 0 0 auto; text-align: center; }
     .players-card { flex: 1; }
-    .player-chip {
-      display: inline-block; padding: 6px 14px; margin: 4px;
-      border-radius: 20px; font-weight: bold; font-size: 14px; color: #fff;
-    }
 
     .phase { display: none; }
     .phase.active { display: block; }
 
-    .prompt-box {
-      background: #0f3460; border-radius: 10px; padding: 24px;
-      font-size: 28px; font-weight: bold; text-align: center;
-      color: #fff; margin: 12px 0; line-height: 1.3;
-    }
-
-    .timer { font-size: 52px; font-weight: bold; text-align: center; color: #e94560; margin: 8px 0; }
-
-    .status-msg { text-align: center; color: #aaa; font-size: 20px; margin: 20px 0; }
+    .prompt-box { background: var(--surface-2); border-radius: 10px; padding: 24px; font-size: 28px; font-weight: bold; text-align: center; color: #fff; margin: 12px 0; line-height: 1.3; }
+    .timer { font-size: 52px; font-weight: bold; text-align: center; color: var(--danger); margin: 8px 0; }
+    .status-msg { text-align: center; color: var(--text-muted); font-size: 20px; margin: 20px 0; }
 
     .checklist { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
-    .check-item {
-      padding: 8px 16px; border-radius: 20px; font-size: 16px;
-      background: #0f3460; display: flex; align-items: center; gap: 8px;
-    }
+    .check-item { padding: 8px 16px; border-radius: 20px; font-size: 16px; background: var(--surface-2); display: flex; align-items: center; gap: 8px; }
     .check-item.done { background: #1a5e3a; }
 
     table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-    th { background: #0f3460; padding: 12px 16px; text-align: left; }
-    td { padding: 12px 16px; border-bottom: 1px solid #0f3460; }
+    th { background: var(--surface-2); padding: 12px 16px; text-align: left; }
+    td { padding: 12px 16px; border-bottom: 1px solid var(--border); }
     tr.winner td { font-weight: bold; background: #1a5e3a; }
-    .ai-tag { font-size: 11px; color: #aaa; margin-left: 6px; }
+    .ai-tag { font-size: 11px; color: var(--text-muted); margin-left: 6px; }
     .author { font-size: 12px; margin-left: 8px; }
 
     .summary-round { margin-bottom: 28px; }
-    .summary-round h3 { color: #e94560; margin: 0 0 8px; }
+    .summary-round h3 { color: var(--danger); margin: 0 0 8px; border-bottom: none; padding-bottom: 0; }
 
-    button.primary {
-      background: #e94560; color: white; border: none;
-      padding: 14px 32px; font-size: 18px; border-radius: 8px;
-      cursor: pointer; display: block; margin: 20px auto;
-    }
-    button.primary:hover { background: #c73652; }
-
-    #error-msg { color: #e94560; text-align: center; font-size: 16px; min-height: 22px; }
+    button.primary { display: block; margin: 20px auto; padding: 14px 32px; font-size: 18px; }
+    #error-msg { color: var(--danger); text-align: center; font-size: 16px; min-height: 22px; }
+    #qrcode { display: inline-block; background: white; padding: 8px; border-radius: 6px; }
   </style>
 </head>
 <body>
 <div class="container">
-  <h1>Busters</h1>
+  <h1 class="page-title">Busters</h1>
 
   <div class="top-row">
     <div class="card qr-card">

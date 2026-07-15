@@ -3,97 +3,47 @@
 <head>
   <title>Shake Weight</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/style.css">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; margin: 0; background: #1a1a2e; color: #eee; }
-    .container { max-width: 960px; margin: 0 auto; padding: 20px; }
-    h1 { color: #e94560; text-align: center; font-size: 36px; margin-bottom: 20px; }
-    h2 { color: #eee; margin: 0 0 12px; border-bottom: 2px solid #e94560; padding-bottom: 8px; }
-
-    .card { background: #16213e; border-radius: 12px; padding: 20px; margin: 14px 0; }
-
+    /* ── Shake Weight-specific ── */
     #qr-display { text-align: center; }
     #qrcode { display: inline-block; background: white; padding: 8px; border-radius: 6px; }
 
-    .controls { text-align: center; }
-    input[type="number"] {
-      font-size: 16px; padding: 10px 16px; margin: 8px;
-      border: 2px solid #0f3460; border-radius: 6px;
-      background: #0f3460; color: #eee; outline: none; width: 120px;
-    }
-    input[type="number"]:focus { border-color: #e94560; }
-    button {
-      font-size: 16px; padding: 10px 24px; margin: 8px;
-      border: none; border-radius: 6px; cursor: pointer;
-      background: #e94560; color: white;
-    }
-    button:hover { background: #c73652; }
-    button:disabled { background: #555; cursor: not-allowed; }
+    #countdown-display { font-size: 72px; font-weight: bold; text-align: center; color: var(--danger); margin: 16px 0; }
 
-    .threshold-control { text-align: center; margin: 16px 0; }
-    .threshold-control span { margin-left: 10px; font-size: 18px; font-weight: bold; color: #e94560; }
-
-    #countdown-display { font-size: 72px; font-weight: bold; text-align: center; color: #e94560; margin: 16px 0; }
-
-    .player-item {
-      background: #0f3460; padding: 14px 16px; margin: 10px 0;
-      border-radius: 8px; border-left: 4px solid #e94560;
-    }
+    .player-item { background: var(--surface-2); padding: 14px 16px; margin: 10px 0; border-radius: var(--radius); border-left: 4px solid var(--accent); }
     .player-name { font-weight: bold; font-size: 18px; }
-    .player-score { font-size: 15px; color: #aaa; margin-top: 6px; }
-    .progress-bar-container {
-      background: #1a1a2e; height: 18px; border-radius: 10px;
-      overflow: hidden; margin-top: 8px;
-    }
-    .progress-bar {
-      background: #e94560; height: 100%; width: 0%;
-      transition: width 0.3s; display: flex; align-items: center;
-      justify-content: center; color: white; font-size: 11px; font-weight: bold;
-    }
+    .player-score { font-size: 15px; color: var(--text-muted); margin-top: 6px; }
+    .progress-bar-container { background: var(--bg); height: 18px; border-radius: 10px; overflow: hidden; margin-top: 8px; }
+    .progress-bar { background: var(--accent); height: 100%; width: 0%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: #09090f; font-size: 11px; font-weight: bold; }
 
     #leaderboard { display: none; text-align: center; }
-    .winner-banner {
-      background: #e94560; color: white;
-      font-size: 32px; font-weight: bold;
-      padding: 20px; border-radius: 10px; margin-bottom: 16px;
-    }
-    .leaderboard-entry {
-      background: #0f3460; padding: 14px 16px;
-      margin: 8px 0; border-radius: 8px; font-size: 18px;
-    }
+    .winner-banner { background: var(--danger); color: white; font-size: 32px; font-weight: bold; padding: 20px; border-radius: 10px; margin-bottom: 16px; }
+    .leaderboard-entry { background: var(--surface-2); padding: 14px 16px; margin: 8px 0; border-radius: var(--radius); font-size: 18px; }
     .leaderboard-entry.first { background: #5a4000; font-weight: bold; }
-    .leaderboard-entry.second { background: #2a2a3e; }
+    .leaderboard-entry.second { background: var(--surface-2); }
     .leaderboard-entry.third { background: #3a2a1a; }
 
-    #game-status { font-size: 16px; text-align: center; color: #aaa; margin: 10px 0; }
+    #game-status { font-size: 16px; text-align: center; color: var(--text-muted); margin: 10px 0; }
+    #threshold-display { font-size: 18px; font-weight: bold; color: var(--accent); }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Shake Weight</h1>
+    <h1 class="page-title">Shake Weight</h1>
 
-    <div class="card" id="qr-display">
+    <div class="card qr-block" id="qr-display">
       <h2>Join Game</h2>
-      <p style="color:#aaa">Scan to join on your phone:</p>
-      <div id="qrcode"><div style="width:200px;height:200px;background:#0f3460;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:#aaa;font-size:13px">Creating room...</div></div>
-      <div id="room-code-display" style="font-size:32px;font-weight:bold;letter-spacing:8px;color:#e94560;margin-top:10px">—</div>
-      <p style="font-size:12px;color:#aaa;margin:2px 0 0">room code</p>
+      <p>Scan to join on your phone</p>
+      <div id="qrcode" class="qr-wrap"><div style="width:200px;height:200px;background:var(--surface-2);border-radius:4px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px">Creating room...</div></div>
+      <div class="room-code-label" id="room-code-display">—</div>
+      <p class="room-code-sub">room code</p>
     </div>
 
-    <div class="card">
-      <h2>Game Settings</h2>
-      <div class="threshold-control">
-        <label for="threshold-input">Score Threshold:</label>
-        <input type="number" id="threshold-input" value="300" min="50" max="5000" step="50" />
-        <span id="threshold-display">300</span>
-      </div>
-      <p style="font-size:13px;color:#aaa;margin-top:8px">First player to reach this score wins. Lower = shorter game.</p>
-    </div>
-
-    <div class="card controls">
-      <button id="start-btn" disabled>Start Game</button>
-      <button id="reset-btn" style="background:#555">Reset Game</button>
+    <div class="card controls" style="text-align:center">
+      <button class="primary" id="start-btn" disabled>Start Game</button>
+      <button class="secondary" id="reset-btn">Reset Game</button>
     </div>
 
     <div id="countdown-display"></div>
@@ -108,7 +58,24 @@
       <h2>Game Over!</h2>
       <div class="winner-banner" id="winner-banner"></div>
       <div id="leaderboard-list"></div>
-      <button id="play-again-btn" style="margin-top:16px">Play Again</button>
+      <button class="secondary" id="play-again-btn" style="margin-top:16px">Play Again</button>
+    </div>
+  </div>
+
+  <!-- Debug toggle -->
+  <button id="debug-toggle">DEBUG</button>
+
+  <!-- Debug panel -->
+  <div id="debug-panel">
+    <h3>⚙️ Game Settings</h3>
+
+    <div>
+      <label>Score Threshold</label>
+      <div class="debug-number-row">
+        <input type="number" id="threshold-input" value="300" min="50" max="5000" step="50" style="width:90px">
+        <span id="threshold-display">300</span>
+      </div>
+      <label style="margin-top:6px">First to reach this score wins. Lower = shorter game.</label>
     </div>
   </div>
 
@@ -169,6 +136,10 @@
     document.getElementById('play-again-btn').onclick = () => {
       socket.emit('reset_shakeweight_game');
       location.reload();
+    };
+
+    document.getElementById('debug-toggle').onclick = () => {
+      document.getElementById('debug-panel').classList.toggle('open');
     };
 
     socket.on('player_joined', ({ playerId, playerName }) => {
