@@ -1,3 +1,4 @@
+require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -27,10 +28,10 @@ app.get("/api/room", (req, res) => {
   res.json({ roomCode, phoneUrl });
 });
 
-app.post("/api/save-game", (req, res) => {
+app.post("/api/save-game", async (req, res) => {
   try {
     const { players, rounds } = req.body;
-    const sessionId = saveGame(players, rounds);
+    const sessionId = await saveGame(players, rounds);
     console.log(`Game saved — session ${sessionId}`);
     res.json({ ok: true, sessionId });
   } catch (e) {

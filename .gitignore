@@ -1,4 +1,6 @@
 node_modules/
 .env
 .DS_Store
-npm-debug.log*data/
+npm-debug.log*
+data/
+firebase-key.json
